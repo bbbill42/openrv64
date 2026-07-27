@@ -68,18 +68,18 @@ The custom instruction definitions live in
 `rtl/core/exec/vec/instr-defs.v`. They use RISC-V custom opcode space solely so
 short test programs can exercise the blocks; they are not RVV encodings:
 
-| Opcode | `funct3` | Operation | Operands |
-| --- | ---: | --- | --- |
-| custom-0 `0001011` | 000 | set private `vtype` | `rs1` names the scalar GPR containing the complete command; `rd=rs2=0` |
-| custom-0 `0001011` | 001-110 | AND, OR, XOR, NOT, FADD, FMUL | `rd=vd`, `rs1=vs1`, `rs2=vs2` |
-| custom-0 `0001011` | 111 | `VSYNC` | `rs1` and `rs2` name two vector registers to wait for; `rd=0` |
-| custom-1 `0101011` | 000 | vector load | `rd=vd`, `rs1` names the pointer GPR, `rs2=0` |
-| custom-1 `0101011` | 001 | vector store | `rs2=vs3`, `rs1` names the pointer GPR, `rd=0` |
-| custom-2 `1011011` | 000 | `VLDA` | copy `vs1` into accumulator `a`; `rd=rs2=0` |
-| custom-2 `1011011` | 001 | `VSTA` | copy accumulator `a` to `vd`; `rs1=rs2=0` |
-| custom-2 `1011011` | 010 | `VMAC` | `acc[a] = acc[a] + vs1 * vs2`; `rd=0` |
-| custom-3 `1111011` | 000 | `VPRFM` aged | prefetch `imm4=bits[23:20]` lines from scalar `rs1`; `rd=0` |
-| custom-3 `1111011` | 001 | `VPRFM` streaming | same descriptor, with discard-next-after-consumption insertion |
+| Opcode             | `funct3` | Operation                     | Operands                                                               |
+|--------------------|---------:|-------------------------------|------------------------------------------------------------------------|
+| custom-0 `0001011` |      000 | set private `vtype`           | `rs1` names the scalar GPR containing the complete command; `rd=rs2=0` |
+| custom-0 `0001011` |  001-110 | AND, OR, XOR, NOT, FADD, FMUL | `rd=vd`, `rs1=vs1`, `rs2=vs2`                                          |
+| custom-0 `0001011` |      111 | `VSYNC`                       | `rs1` and `rs2` name two vector registers to wait for; `rd=0`          |
+| custom-1 `0101011` |      000 | vector load                   | `rd=vd`, `rs1` names the pointer GPR, `rs2=0`                          |
+| custom-1 `0101011` |      001 | vector store                  | `rs2=vs3`, `rs1` names the pointer GPR, `rd=0`                         |
+| custom-2 `1011011` |      000 | `VLDA`                        | copy `vs1` into accumulator `a`; `rd=rs2=0`                            |
+| custom-2 `1011011` |      001 | `VSTA`                        | copy accumulator `a` to `vd`; `rs1=rs2=0`                              |
+| custom-2 `1011011` |      010 | `VMAC`                        | `acc[a] = acc[a] + vs1 * vs2`; `rd=0`                                  |
+| custom-3 `1111011` |      000 | `VPRFM` aged                  | prefetch `imm4=bits[23:20]` lines from scalar `rs1`; `rd=0`            |
+| custom-3 `1111011` |      001 | `VPRFM` streaming             | same descriptor, with discard-next-after-consumption insertion         |
 
 For custom-2, instruction bit 25 selects accumulator `a` (`0` or `1`); bits
 31:26 remain zero.
@@ -136,15 +136,15 @@ larger 4x8 by 8x32 assembled workload and all 128 result elements.
 
 Arithmetic and LSU dispatch carry a 64-bit `vtype`-shaped command:
 
-| Bits | Field | Current behavior |
-| --- | --- | --- |
-| 2:0 | `vlmul` | RVV integer encodings for m1, m2, m4, and m8 |
-| 5:3 | `vsew` | RVV SEW encoding; checked against floating format |
-| 6 | `vta` | Carried in the command but inert without `vl` |
-| 7 | `vma` | Carried in the command but inert without masks |
-| 10:8 | `xfmt` | Private FP32, BF16, FP8 E4M3, or FP4 E2M1 selector |
-| 62:11 | reserved | Must be zero |
-| 63 | `vill` | Rejects the command when set |
+| Bits  | Field    | Current behavior                                   |
+|-------|----------|----------------------------------------------------|
+| 2:0   | `vlmul`  | RVV integer encodings for m1, m2, m4, and m8       |
+| 5:3   | `vsew`   | RVV SEW encoding; checked against floating format  |
+| 6     | `vta`    | Carried in the command but inert without `vl`      |
+| 7     | `vma`    | Carried in the command but inert without masks     |
+| 10:8  | `xfmt`   | Private FP32, BF16, FP8 E4M3, or FP4 E2M1 selector |
+| 62:11 | reserved | Must be zero                                       |
+| 63    | `vill`   | Rejects the command when set                       |
 
 Standard RVV `vtype` cannot distinguish BF16 from FP16 and cannot encode FP8
 or FP4. Bits 10:8 are therefore an explicit private extension, not a claim of
@@ -189,12 +189,12 @@ constructs a `MAX_LMUL*VLEN` register-file transfer.
 
 The initial arithmetic formats are:
 
-| `xfmt` | Format | Required `vsew` | Lanes per 64-bit slice |
-| ---: | --- | --- | ---: |
-| 0 | FP32 / IEEE binary32 | 32 | 2 |
-| 1 | BF16 | 16 | 4 |
-| 2 | FP8 E4M3FN | 8 | 8 |
-| 3 | FP4 E2M1 | 8, packed | 16 |
+| `xfmt` | Format               | Required `vsew` | Lanes per 64-bit slice |
+|-------:|----------------------|-----------------|-----------------------:|
+|      0 | FP32 / IEEE binary32 | 32              |                      2 |
+|      1 | BF16                 | 16              |                      4 |
+|      2 | FP8 E4M3FN           | 8               |                      8 |
+|      3 | FP4 E2M1             | 8, packed       |                     16 |
 
 Arithmetic uses round-to-nearest, ties-to-even. FP4 and FP8 finite overflow
 saturates to the largest finite magnitude. BF16/FP32 use infinities and a

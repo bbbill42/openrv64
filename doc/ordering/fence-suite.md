@@ -114,17 +114,17 @@ response delay before checking transaction completeness.
 
 The aggregate command returned nonzero. One of nine cases passed.
 
-| Case | Sequence | Result | External observation |
-| ---: | --- | --- | --- |
-| 1 | store; `fence w,w`; store | FAIL | The predecessor store and drain load completed, but the successor store never reached home. The zero violation mask is not a pass: required coverage was absent. |
-| 2 | store; `fence w,r`; load | FAIL | The successor load reached home before the predecessor store completed. The predecessor store never appeared. Mask `0x002`. |
-| 3 | load; `fence r,r`; load | PASS | Two requests and two completions; mask `0x000`. |
-| 4 | load; `fence r,w`; store | FAIL | The predecessor and drain loads completed, but the successor store never reached home. |
-| 5 | I/O `o,o`, `o,i`, `i,i`, `i,o` | FAIL | `o,i` exposed its successor input early, mask `0x020`. Only five of eight expected device transactions appeared; three device stores were absent. |
-| 6 | merged partial stores; `fence w,r`; load | FAIL | The successor load reached home before the partial-store line completed. The partial write never appeared, so its exact payload/strobe assertion was not reached. Mask `0x100`. |
-| 7 | twelve stores; `fence w,r`; load | FAIL | Only the first directed store reached home before an LSQ timeout on a later store at PA `0x80010a40`. |
-| 8 | empty/back-to-back fences; observed store | FAIL | Four ordinary fences retired and the drain load completed, but the terminal store never reached home. |
-| 9 | code store; `fence.i`; refetch | FAIL | Two instruction fetches reached home before the code store. Stale code returned `FENCEF+0x41`; mask `0x400`. |
+| Case | Sequence                                  | Result | External observation                                                                                                                                                            |
+|-----:|-------------------------------------------|--------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+|    1 | store; `fence w,w`; store                 | FAIL   | The predecessor store and drain load completed, but the successor store never reached home. The zero violation mask is not a pass: required coverage was absent.                |
+|    2 | store; `fence w,r`; load                  | FAIL   | The successor load reached home before the predecessor store completed. The predecessor store never appeared. Mask `0x002`.                                                     |
+|    3 | load; `fence r,r`; load                   | PASS   | Two requests and two completions; mask `0x000`.                                                                                                                                 |
+|    4 | load; `fence r,w`; store                  | FAIL   | The predecessor and drain loads completed, but the successor store never reached home.                                                                                          |
+|    5 | I/O `o,o`, `o,i`, `i,i`, `i,o`            | FAIL   | `o,i` exposed its successor input early, mask `0x020`. Only five of eight expected device transactions appeared; three device stores were absent.                               |
+|    6 | merged partial stores; `fence w,r`; load  | FAIL   | The successor load reached home before the partial-store line completed. The partial write never appeared, so its exact payload/strobe assertion was not reached. Mask `0x100`. |
+|    7 | twelve stores; `fence w,r`; load          | FAIL   | Only the first directed store reached home before an LSQ timeout on a later store at PA `0x80010a40`.                                                                           |
+|    8 | empty/back-to-back fences; observed store | FAIL   | Four ordinary fences retired and the drain load completed, but the terminal store never reached home.                                                                           |
+|    9 | code store; `fence.i`; refetch            | FAIL   | Two instruction fetches reached home before the code store. Stale code returned `FENCEF+0x41`; mask `0x400`.                                                                    |
 
 The violation-mask bits are:
 
@@ -148,12 +148,12 @@ when a required request never reached the boundary.
 
 ## Atomic results
 
-| Target | Result | Observation |
-| --- | --- | --- |
-| `sim-atomic-sv39` | FAIL | LSQ assertion: unexpected posted-store completion for atomic tag 4; the entry had `access_sent=0`. |
-| `sim-atomic-soc` | FAIL | Same assertion class for atomic tag 4 in the bare workload. |
-| `sim-exec-lsu-rv64-a` | PASS | Serialized RV64A LSU test passed. |
-| `sim-atomic-context` | PASS | Integrated LR/SC, AMO, WFI-hint, and AMO-fault-context test passed. |
+| Target                | Result | Observation                                                                                        |
+|-----------------------|--------|----------------------------------------------------------------------------------------------------|
+| `sim-atomic-sv39`     | FAIL   | LSQ assertion: unexpected posted-store completion for atomic tag 4; the entry had `access_sent=0`. |
+| `sim-atomic-soc`      | FAIL   | Same assertion class for atomic tag 4 in the bare workload.                                        |
+| `sim-exec-lsu-rv64-a` | PASS   | Serialized RV64A LSU test passed.                                                                  |
+| `sim-atomic-context`  | PASS   | Integrated LR/SC, AMO, WFI-hint, and AMO-fault-context test passed.                                |
 
 The two full-hierarchy failures show that the current posted-store completion
 contract is inconsistent with atomic LSQ bookkeeping. The common assertion
@@ -165,11 +165,11 @@ The benchmark measured 1024 cache-hot iterations of matched no-fence and
 fenced loops.
 
 | Fence | Baseline total | Fenced total | Baseline cycles/iteration | Fenced cycles/iteration | Increment |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| `r,r` | 2,398 | 10,248 | 2.3418 | 10.0078 | 7.6660 |
-| `r,w` | 4,103 | 9,223 | 4.0068 | 9.0068 | 5.0000 |
-| `w,r` | 6,148 | 12,292 | 6.0039 | 12.0039 | 6.0000 |
-| `w,w` | 8,186 | 11,268 | 7.9941 | 11.0039 | 3.0098 |
+|-------|---------------:|-------------:|--------------------------:|------------------------:|----------:|
+| `r,r` |          2,398 |       10,248 |                    2.3418 |                 10.0078 |    7.6660 |
+| `r,w` |          4,103 |        9,223 |                    4.0068 |                  9.0068 |    5.0000 |
+| `w,r` |          6,148 |       12,292 |                    6.0039 |                 12.0039 |    6.0000 |
+| `w,w` |          8,186 |       11,268 |                    7.9941 |                 11.0039 |    3.0098 |
 
 Raw simulator output:
 

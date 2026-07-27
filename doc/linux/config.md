@@ -12,22 +12,22 @@ change, so re-run the checks in this document when changing kernel versions.
 
 ## Hardware and firmware contract
 
-| Item | Current OpenRV64 contract |
-| --- | --- |
-| Execution mode | Linux in S-mode; OpenSBI remains in M-mode |
-| ISA | RV64IMA, Zicsr, Zifencei, Zicntr, Svade |
-| Deliberately absent | C, F, D, V |
-| Virtual memory | Sv39 |
+| Item                    | Current OpenRV64 contract                                        |
+|-------------------------|------------------------------------------------------------------|
+| Execution mode          | Linux in S-mode; OpenSBI remains in M-mode                       |
+| ISA                     | RV64IMA, Zicsr, Zifencei, Zicntr, Svade                          |
+| Deliberately absent     | C, F, D, V                                                       |
+| Virtual memory          | Sv39                                                             |
 | Page-table A/D behavior | Svade: clear A or D bits cause page faults for software handling |
-| Harts | One |
-| RAM | `0x8000_0000` through `0x8fff_ffff` (256 MiB) |
-| OpenSBI firmware | `0x8010_0000` |
-| Linux `Image` | `0x8020_0000` |
-| FDT | `0x8ff0_0000`, passed in `a1`; hart ID 0 passed in `a0` |
-| Timebase | 10 MHz |
-| Clock event | SBI TIME, delivered to Linux as STIP |
-| UART | `ns16550a` at `0x1000_0000`, 1.8432 MHz input clock, 115200 baud |
-| External interrupts | PLIC at `0x0c00_0000`; see the PLIC limitation below |
+| Harts                   | One                                                              |
+| RAM                     | `0x8000_0000` through `0x8fff_ffff` (256 MiB)                    |
+| OpenSBI firmware        | `0x8010_0000`                                                    |
+| Linux `Image`           | `0x8020_0000`                                                    |
+| FDT                     | `0x8ff0_0000`, passed in `a1`; hart ID 0 passed in `a0`          |
+| Timebase                | 10 MHz                                                           |
+| Clock event             | SBI TIME, delivered to Linux as STIP                             |
+| UART                    | `ns16550a` at `0x1000_0000`, 1.8432 MHz input clock, 115200 baud |
+| External interrupts     | PLIC at `0x0c00_0000`; see the PLIC limitation below             |
 
 The raw RISC-V Linux `Image` must be used. It is already linked for the
 standard RISC-V load offset and `0x8020_0000` is 2 MiB aligned. Do not load

@@ -2,24 +2,24 @@
 
 ## What was run, and when (UTC)
 
-| Run | Command | Started | Finished | Purpose |
-|---|---|---|---|---|
-| Comparable functional-boundary map | `make yosys-resources-core-sky130` | 2026-07-23 12:03:12 | 2026-07-23 12:29:18 | Direct comparison with the 2026-07-21 report |
-| Detailed memory-system boundary map | `make yosys-resources-core-sky130` | 2026-07-23 12:31:52 | 2026-07-23 12:55:30 | Split L1D, L1I, TLB, PTW, and routing/AXI |
+| Run                                 | Command                            | Started             | Finished            | Purpose                                      |
+|-------------------------------------|------------------------------------|---------------------|---------------------|----------------------------------------------|
+| Comparable functional-boundary map  | `make yosys-resources-core-sky130` | 2026-07-23 12:03:12 | 2026-07-23 12:29:18 | Direct comparison with the 2026-07-21 report |
+| Detailed memory-system boundary map | `make yosys-resources-core-sky130` | 2026-07-23 12:31:52 | 2026-07-23 12:55:30 | Split L1D, L1I, TLB, PTW, and routing/AXI    |
 
 The first start time is reconstructed from its 1,565.69-second Yosys runtime
 and finish time. The second run has explicit command timestamps. Both runs used
 Git `e282331ad333328b0c2b689ad13dd0a7014835a9` with a dirty working tree, so
 the commit alone does not reproduce the live RTL snapshot.
 
-| Setting | Value |
-|---|---|
-| Top | `openrv64_top_3p` |
-| Tool | Yosys 0.66 (`86f2ddebc-dirty`) with ABC |
-| Cell library | `sky130_fd_sc_hd__tt_025C_1v80.lib`, TT, 25 C, 1.8 V |
-| Library SHA-256 | `ec0e1067a35c8bf20b11e58d1e8ac53326067e4dac84a125cc1b917a3518d0d9` |
-| ABC constraints | `sky130_fd_sc_hd__inv_2` input driver; 10 fF output load; no wire load |
-| Constraint SHA-256 | `7bc97e5a90f50e8b3f7f46984b55595886869c3b0b9b09b8f752a7dc6574714b` |
+| Setting            | Value                                                                                                |
+|--------------------|------------------------------------------------------------------------------------------------------|
+| Top                | `openrv64_top_3p`                                                                                    |
+| Tool               | Yosys 0.66 (`86f2ddebc-dirty`) with ABC                                                              |
+| Cell library       | `sky130_fd_sc_hd__tt_025C_1v80.lib`, TT, 25 C, 1.8 V                                                 |
+| Library SHA-256    | `ec0e1067a35c8bf20b11e58d1e8ac53326067e4dac84a125cc1b917a3518d0d9`                                   |
+| ABC constraints    | `sky130_fd_sc_hd__inv_2` input driver; 10 fF output load; no wire load                               |
+| Constraint SHA-256 | `7bc97e5a90f50e8b3f7f46984b55595886869c3b0b9b09b8f752a7dc6574714b`                                   |
 | Detailed artifacts | `sim/yosys/core-sky130/resources.{md,csv,json}`, `partitioned-yosys.log`, `partitioned-memories.rpt` |
 
 The profile is RV64IM+A, EX0/EX1/MEM, three-wide dispatch and retirement,
@@ -33,12 +33,12 @@ vector unit, SoC peripherals, and testbench RAM are excluded.
 
 There is no single honest area number without defining the boundary:
 
-| Boundary | Standard-cell area | Detailed total | What it includes |
-|---|---:|---:|---|
-| CPU-side logic | **2.404753 mm²** | 45.18% | Frontend, backend, GPR, execution, LSU, CSR/PMP, retirement |
-| Cacheless core | **3.080753 mm²** | 57.88% | CPU-side logic plus I/D TLBs, PTW, request routing, and AXI/CCX glue |
-| L1-integrated core logic | **5.322836 mm²** | 100.00% | Cacheless core plus L1I/L1D control, tags, buffers, and prefetch logic |
-| L1 data arrays | **32 KiB, area unknown** | n/a | Eight inferred 1R/1W SRAM banks; no mapped macro area |
+| Boundary                 |       Standard-cell area | Detailed total | What it includes                                                       |
+|--------------------------|-------------------------:|---------------:|------------------------------------------------------------------------|
+| CPU-side logic           |         **2.404753 mm²** |         45.18% | Frontend, backend, GPR, execution, LSU, CSR/PMP, retirement            |
+| Cacheless core           |         **3.080753 mm²** |         57.88% | CPU-side logic plus I/D TLBs, PTW, request routing, and AXI/CCX glue   |
+| L1-integrated core logic |         **5.322836 mm²** |        100.00% | Cacheless core plus L1I/L1D control, tags, buffers, and prefetch logic |
+| L1 data arrays           | **32 KiB, area unknown** |            n/a | Eight inferred 1R/1W SRAM banks; no mapped macro area                  |
 
 The directly comparable, less-partitioned standard-cell result is
 **5.086486 mm²**. The detailed total is **0.236350 mm² (4.65%)** larger
@@ -66,28 +66,28 @@ from EX0.
 The rows are exclusive: retained child area is subtracted from its parent.
 The percentages use the detailed 5.322836 mm² standard-cell total.
 
-| Functional block | Domain | Area (mm²) | Total | Sequential (mm²) | Cells |
-|---|---|---:|---:|---:|---:|
-| L1D control/tags | Memory | 1.263340 | 23.73% | 0.706591 | 116,589 |
-| L1I control/tags | Memory | 0.978742 | 18.39% | 0.477888 | 90,801 |
-| Retirement | CPU | 0.642817 | 12.08% | 0.175468 | 84,222 |
-| CSR/PMP | CPU | 0.355448 | 6.68% | 0.037168 | 51,704 |
-| Page-table walker | Memory/VM | 0.295252 | 5.55% | 0.235109 | 16,810 |
-| Dispatch/hazards | CPU | 0.281520 | 5.29% | 0.046194 | 37,116 |
-| Backend control/forwarding | CPU | 0.260417 | 4.89% | 0.070468 | 37,041 |
-| I/D TLBs | Memory/VM | 0.258723 | 4.86% | 0.107503 | 27,662 |
-| Integer register file | CPU | 0.235505 | 4.42% | 0.051249 | 25,252 |
-| LSU/MEM pipe | CPU | 0.229550 | 4.31% | 0.111409 | 21,837 |
-| EX0 integer/M | CPU | 0.164465 | 3.09% | 0.030254 | 24,156 |
-| Memory-system routing/AXI | Memory/VM | 0.122026 | 2.29% | 0.057471 | 15,173 |
-| Fetch/line buffers | CPU | 0.109017 | 2.05% | 0.041490 | 12,216 |
-| EX1 integer/branch | CPU | 0.052333 | 0.98% | 0.011761 | 8,227 |
-| Branch predictor | CPU | 0.046422 | 0.87% | 0.018863 | 5,839 |
-| Frontend/core control | CPU | 0.018256 | 0.34% | 0.004061 | 2,668 |
-| Decode, three lanes | CPU | 0.005413 | 0.10% | 0.000000 | 927 |
-| Trap/redirect vector | CPU | 0.003590 | 0.07% | 0.000000 | 453 |
-| AXI wrapper/tie-offs | Boundary | 0.000000 | 0.00% | 0.000000 | 0 |
-| **Detailed total** |  | **5.322836** | **100.00%** | **2.182950** | **578,693** |
+| Functional block           | Domain    |   Area (mm²) |       Total | Sequential (mm²) |       Cells |
+|----------------------------|-----------|-------------:|------------:|-----------------:|------------:|
+| L1D control/tags           | Memory    |     1.263340 |      23.73% |         0.706591 |     116,589 |
+| L1I control/tags           | Memory    |     0.978742 |      18.39% |         0.477888 |      90,801 |
+| Retirement                 | CPU       |     0.642817 |      12.08% |         0.175468 |      84,222 |
+| CSR/PMP                    | CPU       |     0.355448 |       6.68% |         0.037168 |      51,704 |
+| Page-table walker          | Memory/VM |     0.295252 |       5.55% |         0.235109 |      16,810 |
+| Dispatch/hazards           | CPU       |     0.281520 |       5.29% |         0.046194 |      37,116 |
+| Backend control/forwarding | CPU       |     0.260417 |       4.89% |         0.070468 |      37,041 |
+| I/D TLBs                   | Memory/VM |     0.258723 |       4.86% |         0.107503 |      27,662 |
+| Integer register file      | CPU       |     0.235505 |       4.42% |         0.051249 |      25,252 |
+| LSU/MEM pipe               | CPU       |     0.229550 |       4.31% |         0.111409 |      21,837 |
+| EX0 integer/M              | CPU       |     0.164465 |       3.09% |         0.030254 |      24,156 |
+| Memory-system routing/AXI  | Memory/VM |     0.122026 |       2.29% |         0.057471 |      15,173 |
+| Fetch/line buffers         | CPU       |     0.109017 |       2.05% |         0.041490 |      12,216 |
+| EX1 integer/branch         | CPU       |     0.052333 |       0.98% |         0.011761 |       8,227 |
+| Branch predictor           | CPU       |     0.046422 |       0.87% |         0.018863 |       5,839 |
+| Frontend/core control      | CPU       |     0.018256 |       0.34% |         0.004061 |       2,668 |
+| Decode, three lanes        | CPU       |     0.005413 |       0.10% |         0.000000 |         927 |
+| Trap/redirect vector       | CPU       |     0.003590 |       0.07% |         0.000000 |         453 |
+| AXI wrapper/tie-offs       | Boundary  |     0.000000 |       0.00% |         0.000000 |           0 |
+| **Detailed total**         |           | **5.322836** | **100.00%** |     **2.182950** | **578,693** |
 
 ### What is actually in the large memory blocks
 
@@ -112,11 +112,11 @@ all cache state.
 
 ## Inferred SRAM and whole-core physical projection
 
-| Storage | Banks | Inferred shape | Capacity |
-|---|---:|---|---:|
-| L1I data | 4 | 64x512-bit, 1R/1W | 16 KiB |
-| L1D data | 4 | 512x64-bit, 1R/1W | 16 KiB |
-| **Total** | **8** | 262,144 bits | **32 KiB** |
+| Storage   | Banks | Inferred shape    |   Capacity |
+|-----------|------:|-------------------|-----------:|
+| L1I data  |     4 | 64x512-bit, 1R/1W |     16 KiB |
+| L1D data  |     4 | 512x64-bit, 1R/1W |     16 KiB |
+| **Total** | **8** | 262,144 bits      | **32 KiB** |
 
 The synthesis flow asserts this geometry and fails if the eight data arrays
 turn back into flops. It does not have SRAM Liberty or LEF views, so it cannot
@@ -152,23 +152,23 @@ The prior report used the same coarse functional boundaries and measured
 2.808674 mm² with caches excluded. The current comparable-boundary run is
 5.086486 mm²:
 
-| Functional block | Previous (mm²) | Current (mm²) | Change |
-|---|---:|---:|---:|
-| Memory system, including current L1 control | 0.371832 | 2.686901 | +2.315069 (+622.61%) |
-| Retirement | 0.699146 | 0.642817 | -0.056329 (-8.06%) |
-| Backend control/forwarding | 0.375060 | 0.260417 | -0.114643 (-30.57%) |
-| CSR/PMP | 0.353881 | 0.355448 | +0.001567 (+0.44%) |
-| Dispatch/hazards | 0.291065 | 0.281928 | -0.009137 (-3.14%) |
-| Integer register file | 0.182192 | 0.235505 | +0.053313 (+29.26%) |
-| EX0 integer/M | 0.167477 | 0.164465 | -0.003012 (-1.80%) |
-| LSU/MEM pipe | 0.150705 | 0.229550 | +0.078845 (+52.32%) |
-| Fetch/line buffers | 0.095201 | 0.103442 | +0.008241 (+8.66%) |
-| EX1 integer/branch | 0.052465 | 0.052333 | -0.000132 (-0.25%) |
-| Branch predictor | 0.045421 | 0.046422 | +0.001001 (+2.20%) |
-| Frontend/core control | 0.015415 | 0.018256 | +0.002841 (+18.43%) |
-| Decode | 0.005225 | 0.005413 | +0.000188 (+3.59%) |
-| Trap/redirect vector | 0.003590 | 0.003590 | effectively unchanged |
-| **Total** | **2.808674** | **5.086486** | **+2.277812 (+81.10%)** |
+| Functional block                            | Previous (mm²) | Current (mm²) |                  Change |
+|---------------------------------------------|---------------:|--------------:|------------------------:|
+| Memory system, including current L1 control |       0.371832 |      2.686901 |    +2.315069 (+622.61%) |
+| Retirement                                  |       0.699146 |      0.642817 |      -0.056329 (-8.06%) |
+| Backend control/forwarding                  |       0.375060 |      0.260417 |     -0.114643 (-30.57%) |
+| CSR/PMP                                     |       0.353881 |      0.355448 |      +0.001567 (+0.44%) |
+| Dispatch/hazards                            |       0.291065 |      0.281928 |      -0.009137 (-3.14%) |
+| Integer register file                       |       0.182192 |      0.235505 |     +0.053313 (+29.26%) |
+| EX0 integer/M                               |       0.167477 |      0.164465 |      -0.003012 (-1.80%) |
+| LSU/MEM pipe                                |       0.150705 |      0.229550 |     +0.078845 (+52.32%) |
+| Fetch/line buffers                          |       0.095201 |      0.103442 |      +0.008241 (+8.66%) |
+| EX1 integer/branch                          |       0.052465 |      0.052333 |      -0.000132 (-0.25%) |
+| Branch predictor                            |       0.045421 |      0.046422 |      +0.001001 (+2.20%) |
+| Frontend/core control                       |       0.015415 |      0.018256 |     +0.002841 (+18.43%) |
+| Decode                                      |       0.005225 |      0.005413 |      +0.000188 (+3.59%) |
+| Trap/redirect vector                        |       0.003590 |      0.003590 |   effectively unchanged |
+| **Total**                                   |   **2.808674** |  **5.086486** | **+2.277812 (+81.10%)** |
 
 The full number grew 81.1%, but that is almost entirely the integrated L1
 memory subsystem. Removing each run's coarse memory-system bucket gives
@@ -200,11 +200,11 @@ bandwidth.
 These are engineering projections from the measured blocks, not synthesized
 variants:
 
-| Design | Added cell area | Added detailed core | Added CPU-side logic | Expected effect |
-|---|---:|---:|---:|---|
-| Second AGU/admission path, shared MEM queue and L1D port | **0.03-0.08 mm²** | 0.6-1.5% | 1.2-3.3% | Better scheduling and head-of-line behavior; still one cache lookup/cycle |
-| Independent eight-entry load-only pipe, arbitrated into current L1D | **0.12-0.20 mm²** | 2.3-3.8% | 5.0-8.3% | Absorbs bursts; sustained hits still serialize at L1D |
-| Genuine two-load/cycle path with banked/multi-read L1D | **0.30-0.70 mm²** plus SRAM cost | 5.6-13.2% | 12.5-29.1% | Two hits/cycle only on a conflict-free or truly multiported cache |
+| Design                                                              |                  Added cell area | Added detailed core | Added CPU-side logic | Expected effect                                                           |
+|---------------------------------------------------------------------|---------------------------------:|--------------------:|---------------------:|---------------------------------------------------------------------------|
+| Second AGU/admission path, shared MEM queue and L1D port            |                **0.03-0.08 mm²** |            0.6-1.5% |             1.2-3.3% | Better scheduling and head-of-line behavior; still one cache lookup/cycle |
+| Independent eight-entry load-only pipe, arbitrated into current L1D |                **0.12-0.20 mm²** |            2.3-3.8% |             5.0-8.3% | Absorbs bursts; sustained hits still serialize at L1D                     |
+| Genuine two-load/cycle path with banked/multi-read L1D              | **0.30-0.70 mm²** plus SRAM cost |           5.6-13.2% |           12.5-29.1% | Two hits/cycle only on a conflict-free or truly multiported cache         |
 
 The genuine two-load case needs more than another AGU:
 
@@ -240,11 +240,11 @@ and the
 If, explicitly as a heuristic, Sky130-to-28-nm effective standard-cell density
 improves by 10-20x:
 
-| OpenRV64 boundary projected to 28 nm | Projected area | Versus 0.55 mm² A53 logic anchor |
-|---|---:|---:|
-| CPU-side logic | 0.120-0.240 mm² | 22-44% |
-| Cacheless core including VM/routing | 0.154-0.308 mm² | 28-56% |
-| Full L1-integrated standard-cell logic | 0.254-0.509 mm² | 46-93% |
+| OpenRV64 boundary projected to 28 nm   |  Projected area | Versus 0.55 mm² A53 logic anchor |
+|----------------------------------------|----------------:|---------------------------------:|
+| CPU-side logic                         | 0.120-0.240 mm² |                           22-44% |
+| Cacheless core including VM/routing    | 0.154-0.308 mm² |                           28-56% |
+| Full L1-integrated standard-cell logic | 0.254-0.509 mm² |                           46-93% |
 
 This band is deliberately wide. It omits OpenRV64 SRAM area and P&R overhead,
 while the A53 includes NEON/FPU and uses a commercial implementation flow. The

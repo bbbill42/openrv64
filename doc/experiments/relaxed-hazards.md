@@ -9,12 +9,12 @@ The conservative multiple-writer/read-port hazard area costs **2,251 cycles**, o
 3P IPC from **0.6026** to **0.6186**.  This is measurable, but it is not the main
 remaining performance deficit.
 
-| Core/configuration | ISA instructions | Cycles | IPC | Versus 3P baseline |
-| --- | ---: | ---: | ---: | ---: |
-| OpenRV64 1P, BTFNT + RAS8 | 52,547 | 131,801 | 0.3987 | +44,599 cycles |
-| OpenRV64 3P baseline | 52,547 | 87,202 | 0.6026 | reference |
-| **OpenRV64 3P, aggressive hazards** | **52,547** | **84,951** | **0.6186** | **-2,251 (-2.58%)** |
-| gem5 HPI A53-class proxy | 58,695 | 71,443 | 0.821564 | -13,508 cycles vs aggressive 3P |
+| Core/configuration                  | ISA instructions |     Cycles |        IPC |              Versus 3P baseline |
+|-------------------------------------|-----------------:|-----------:|-----------:|--------------------------------:|
+| OpenRV64 1P, BTFNT + RAS8           |           52,547 |    131,801 |     0.3987 |                  +44,599 cycles |
+| OpenRV64 3P baseline                |           52,547 |     87,202 |     0.6026 |                       reference |
+| **OpenRV64 3P, aggressive hazards** |       **52,547** | **84,951** | **0.6186** |             **-2,251 (-2.58%)** |
+| gem5 HPI A53-class proxy            |           58,695 |     71,443 |   0.821564 | -13,508 cycles vs aggressive 3P |
 
 All OpenRV64 rows use BTFNT, an eight-entry RAS, eight retirement entries,
 full forwarding, relaxed WAW, posted stores, the same annotated `-O2` RV64
@@ -58,23 +58,23 @@ The following buckets are exclusive classifications of the first non-issued
 candidate.  Removing one block can expose a different block in the same cycle,
 so the bucket deltas do not add up to the total cycle delta.
 
-| Trace counter | Baseline | Aggressive | Delta |
-| --- | ---: | ---: | ---: |
-| Cycles | 87,202 | 84,951 | **-2,251** |
-| No instruction issued | 49,994 | 46,943 | -3,051 |
-| Completed-result RAW block | 4,801 | 0 | -4,801 |
-| Read-port block | 128 | 0 | -128 |
-| Pending-result RAW block | 25,353 | 26,969 | +1,616 |
-| Same-bundle RAW block | 16,092 | 15,996 | -96 |
-| Barrier block | 11,382 | 11,214 | -168 |
-| Pipe conflict | 4,477 | 4,661 | +184 |
-| Pipe busy | 5,089 | 5,113 | +24 |
-| Retirement head incomplete | 39,631 | 36,670 | **-2,961** |
-| Completed entries behind head | 17,840 | 18,624 | +784 |
-| Frontend held | 24,342 | 23,123 | -1,219 |
-| Frontend empty | 23,760 | 23,976 | +216 |
-| LSU outstanding | 31,450 | 30,714 | -736 |
-| LSU order block | 2,641 | 4,097 | +1,456 |
+| Trace counter                 | Baseline | Aggressive |      Delta |
+|-------------------------------|---------:|-----------:|-----------:|
+| Cycles                        |   87,202 |     84,951 | **-2,251** |
+| No instruction issued         |   49,994 |     46,943 |     -3,051 |
+| Completed-result RAW block    |    4,801 |          0 |     -4,801 |
+| Read-port block               |      128 |          0 |       -128 |
+| Pending-result RAW block      |   25,353 |     26,969 |     +1,616 |
+| Same-bundle RAW block         |   16,092 |     15,996 |        -96 |
+| Barrier block                 |   11,382 |     11,214 |       -168 |
+| Pipe conflict                 |    4,477 |      4,661 |       +184 |
+| Pipe busy                     |    5,089 |      5,113 |        +24 |
+| Retirement head incomplete    |   39,631 |     36,670 | **-2,961** |
+| Completed entries behind head |   17,840 |     18,624 |       +784 |
+| Frontend held                 |   24,342 |     23,123 |     -1,219 |
+| Frontend empty                |   23,760 |     23,976 |       +216 |
+| LSU outstanding               |   31,450 |     30,714 |       -736 |
+| LSU order block               |    2,641 |      4,097 |     +1,456 |
 
 The 4,801 completed-result blocks disappearing but only 2,251 total cycles
 being saved is the useful conclusion.  Most removed stalls uncover an

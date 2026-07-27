@@ -7,11 +7,11 @@ loop image it reduced execution from **93,874 to 90,151 cycles** and raised IPC
 from **0.5598 to 0.5829**. That is 3,723 cycles, or 3.97%, with no general live
 completion network and no completed-result map enabled.
 
-| Configuration | Cycles | Retired | IPC | RAW-pending first blocks | Retire-head incomplete |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| Branch bypass off (`000`) | 93,874 | 52,547 | 0.5598 | 43,457 | 45,697 |
-| EX0/EX1/MEM to branch (`111`) | 90,151 | 52,547 | 0.5829 | 38,695 | 41,132 |
-| Delta | -3,723 (-3.97%) | 0 | +0.0231 (+4.13%) | -4,762 | -4,565 |
+| Configuration                 |          Cycles | Retired |              IPC | RAW-pending first blocks | Retire-head incomplete |
+|-------------------------------|----------------:|--------:|-----------------:|-------------------------:|-----------------------:|
+| Branch bypass off (`000`)     |          93,874 |  52,547 |           0.5598 |                   43,457 |                 45,697 |
+| EX0/EX1/MEM to branch (`111`) |          90,151 |  52,547 |           0.5829 |                   38,695 |                 41,132 |
+| Delta                         | -3,723 (-3.97%) |       0 | +0.0231 (+4.13%) |                   -4,762 |                 -4,565 |
 
 The enabled run issued 4,852 conditional branches with at least one bypassed
 operand, covering 6,080 operands. The predictor behavior did not change:
@@ -91,13 +91,13 @@ The direct effect is the 4,762-cycle reduction in `raw_pending`. Secondary
 effects are expected because releasing a branch changes queue and frontend
 timing:
 
-| Counter | Off | On | Delta |
-| --- | ---: | ---: | ---: |
-| Queued no issue | 43,116 | 38,043 | -5,073 |
-| Frontend held | 26,593 | 23,517 | -3,076 |
-| Fetch reads | 25,768 | 25,433 | -335 |
-| Useful BEQ/BNE issue pairs | 3,693 | 3,596 | -97 |
-| Branch corrections | 2,878 | 2,878 | 0 |
+| Counter                    |    Off |     On |  Delta |
+|----------------------------|-------:|-------:|-------:|
+| Queued no issue            | 43,116 | 38,043 | -5,073 |
+| Frontend held              | 26,593 | 23,517 | -3,076 |
+| Fetch reads                | 25,768 | 25,433 |   -335 |
+| Useful BEQ/BNE issue pairs |  3,693 |  3,596 |    -97 |
+| Branch corrections         |  2,878 |  2,878 |      0 |
 
 The small drop in same-bundle equality pairs is not a regression by itself;
 the bypass changes when branches reach the head and how neighboring work is
@@ -127,11 +127,11 @@ of the RAW benefit at the cost of some bundle opportunities.
 A parameter-controlled full-core generic-techmap A/B gives the following
 structural estimate with the full and general forwarding networks disabled:
 
-| Metric | Bypass off | Bypass on | Delta |
-| --- | ---: | ---: | ---: |
-| Generic cells | 470,798 | 479,804 | +9,006 (+1.91%) |
-| Flops | 23,985 | 24,112 | +127 (+0.53%) |
-| Generic mux cells | 210,606 | 217,164 | +6,558 |
+| Metric            | Bypass off | Bypass on |           Delta |
+|-------------------|-----------:|----------:|----------------:|
+| Generic cells     |    470,798 |   479,804 | +9,006 (+1.91%) |
+| Flops             |     23,985 |    24,112 |   +127 (+0.53%) |
+| Generic mux cells |    210,606 |   217,164 |          +6,558 |
 
 The 127 flops are exactly the expected 31 nonzero-register owner-valid bits and
 32 three-bit retirement-slot tags. The combinational cost is less trivial:

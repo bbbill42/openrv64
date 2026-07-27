@@ -20,16 +20,16 @@ interface.
 
 ## Signals
 
-| Signal | Direction | Description |
-| --- | --- | --- |
-| `mem_valid` | core to memory | Request is active. Request fields stay stable until `mem_ready`. |
-| `mem_ready` | memory to core | Response/acceptance for the active request. |
-| `mem_write` | core to memory | `1` for write, `0` for read. |
-| `mem_addr[63:0]` | core to memory | Byte address. Fetch requests are 8-byte aligned; data requests preserve their effective byte address. |
-| `mem_wdata[63:0]` | core to memory | Write data. |
-| `mem_wstrb[7:0]` | core to memory | One byte lane enable per write byte. |
-| `mem_rdata[63:0]` | memory to core | Read data valid when `mem_ready` is high for a read. |
-| `mem_error` | memory to core | Completion failed; valid only with `mem_valid && mem_ready`. |
+| Signal            | Direction      | Description                                                                                           |
+|-------------------|----------------|-------------------------------------------------------------------------------------------------------|
+| `mem_valid`       | core to memory | Request is active. Request fields stay stable until `mem_ready`.                                      |
+| `mem_ready`       | memory to core | Response/acceptance for the active request.                                                           |
+| `mem_write`       | core to memory | `1` for write, `0` for read.                                                                          |
+| `mem_addr[63:0]`  | core to memory | Byte address. Fetch requests are 8-byte aligned; data requests preserve their effective byte address. |
+| `mem_wdata[63:0]` | core to memory | Write data.                                                                                           |
+| `mem_wstrb[7:0]`  | core to memory | One byte lane enable per write byte.                                                                  |
+| `mem_rdata[63:0]` | memory to core | Read data valid when `mem_ready` is high for a read.                                                  |
+| `mem_error`       | memory to core | Completion failed; valid only with `mem_valid && mem_ready`.                                          |
 
 There is no burst, transaction ID, or separate instruction/data channel on
 the generic interface.

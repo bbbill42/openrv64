@@ -11,13 +11,13 @@ final GPR value.
 
 This is a useful improvement, but it is not the main remaining HPI gap.
 
-| Core/configuration | Instructions | Cycles | IPC | Delta from strict WAW |
-| --- | ---: | ---: | ---: | ---: |
-| OpenRV64, BTFNT + RAS8, full forwarding, strict WAW | 52,547 | 93,624 | 0.5613 | reference |
-| OpenRV64, BTFNT + RAS8, full forwarding, relaxed WAW | 52,547 | **91,216** | **0.5761** | **-2,408 cycles (-2.57%)** |
-| OpenRV64, oracle branches, full forwarding, strict WAW | 52,547 | 84,308 | 0.6233 | reference |
-| OpenRV64, oracle branches, full forwarding, relaxed WAW | 52,547 | **81,699** | **0.6432** | **-2,609 cycles (-3.09%)** |
-| gem5 HPI A53-class reference | 58,695 | 72,146 | 0.813559 | cross-ISA reference |
+| Core/configuration                                      | Instructions |     Cycles |        IPC |      Delta from strict WAW |
+|---------------------------------------------------------|-------------:|-----------:|-----------:|---------------------------:|
+| OpenRV64, BTFNT + RAS8, full forwarding, strict WAW     |       52,547 |     93,624 |     0.5613 |                  reference |
+| OpenRV64, BTFNT + RAS8, full forwarding, relaxed WAW    |       52,547 | **91,216** | **0.5761** | **-2,408 cycles (-2.57%)** |
+| OpenRV64, oracle branches, full forwarding, strict WAW  |       52,547 |     84,308 |     0.6233 |                  reference |
+| OpenRV64, oracle branches, full forwarding, relaxed WAW |       52,547 | **81,699** | **0.6432** | **-2,609 cycles (-3.09%)** |
+| gem5 HPI A53-class reference                            |       58,695 |     72,146 |   0.813559 |        cross-ISA reference |
 
 The relaxed normal-predictor result remains 19,070 cycles above HPI.  With
 prediction made oracular, OpenRV64 remains 9,553 cycles above HPI.  HPI executes
@@ -44,9 +44,9 @@ The fix gives ordered same-cycle GPR retirement bypass priority over completion
 maps.  This does not add the conservative extra stall that would result from
 waiting one more cycle.  The formerly failing annotated `-O2` binary now passes:
 
-| Configuration | Instructions | Cycles | IPC | Checksum |
-| --- | ---: | ---: | ---: | --- |
-| BTFNT + RAS8, full forwarding, relaxed WAW, annotated `-O2` | 52,547 | **87,202** | **0.6026** | correct |
+| Configuration                                               | Instructions |     Cycles |        IPC | Checksum |
+|-------------------------------------------------------------|-------------:|-----------:|-----------:|----------|
+| BTFNT + RAS8, full forwarding, relaxed WAW, annotated `-O2` |       52,547 | **87,202** | **0.6026** | correct  |
 
 `tb_backend_3p.sv` now contains the exact two-writer/retiring-consumer store
 regression.  The broader producer-identity limitation remains: consumers still
@@ -88,13 +88,13 @@ with `RELAX_WAW=0` or `AXI_3P_RELAX_WAW=0` for comparison.
 In the previously matched 100-instruction `state_transition` window, relaxing
 WAW is much more visible than in the whole run:
 
-| Measurement | Strict WAW | Relaxed WAW | HPI |
-| --- | ---: | ---: | ---: |
-| Matched call cycles | 241 | **209** | 148 |
-| Matched call IPC | 0.548 | **0.632** | 0.912 |
-| Selected 100-instruction span | 183 cycles | **156 cycles** | 121 cycles |
-| Local 100-instruction IPC | 0.546 | **0.641** | 0.826 |
-| Queued-no-issue cycles in span | 100 | **70** | 44 |
+| Measurement                    | Strict WAW |    Relaxed WAW |        HPI |
+|--------------------------------|-----------:|---------------:|-----------:|
+| Matched call cycles            |        241 |        **209** |        148 |
+| Matched call IPC               |      0.548 |      **0.632** |      0.912 |
+| Selected 100-instruction span  | 183 cycles | **156 cycles** | 121 cycles |
+| Local 100-instruction IPC      |      0.546 |      **0.641** |      0.826 |
+| Queued-no-issue cycles in span |        100 |         **70** |         44 |
 
 For example, consecutive independent overwrites of `a2` can now start on
 successive cycles rather than waiting for each older value to retire.  The

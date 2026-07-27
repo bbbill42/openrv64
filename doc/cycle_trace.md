@@ -55,24 +55,24 @@ The five-bit stage vectors use bit `0=IF`, `1=ID`, `2=EX`, `3=MEM`, and
 `trace_pcs`, and the 32-bit slices in `trace_instrs`. For example, the execute
 UID is `trace_ids[2*64 +: 64]`.
 
-| Output | Meaning |
-| --- | --- |
-| `trace_cycle` | Rising-edge count since reset deassertion. |
-| `trace_valid[4:0]` | The corresponding stage owns an instruction ID. |
-| `trace_stall[4:0]` | Valid instruction neither advances nor flushes this cycle. |
-| `trace_flush[4:0]` | Stage is invalidated this cycle. Payload outputs are masked. |
-| `trace_advance[4:0]` | Stage completes a local step or downstream handoff. |
-| `trace_ids[319:0]` | Unique dynamic instruction ID per stage; zero when invalid. |
-| `trace_pcs[319:0]` | PC per stage; zero when invalid. |
-| `trace_instrs[159:0]` | Instruction word per stage; zero when invalid or while IF still waits for its response. |
-| `trace_events[7:0]` | Redirect, trap, IRQ, MRET, SRET, restart, halt, reset. |
-| `trace_stall_causes[7:0]` | RAW, WAW, scoreboard, IF memory, data memory, execute, frontend held, serializing. |
-| `trace_retire_valid` | WB entry is consumed, including a faulting instruction. |
-| `trace_retire_arch` | Instruction completed without an exception. |
-| `trace_retire_exception` | Instruction generated an exception. |
-| `trace_retire_cause` | Exception cause when `trace_retire_exception` is set. |
-| `trace_retire_next_pc` | Sequential or resolved next PC carried by WB. |
-| `trace_retire_rd_write`, `trace_retire_rd`, `trace_retire_wdata` | Architectural GPR update; writes to x0 are suppressed. |
+| Output                                                           | Meaning                                                                                 |
+|------------------------------------------------------------------|-----------------------------------------------------------------------------------------|
+| `trace_cycle`                                                    | Rising-edge count since reset deassertion.                                              |
+| `trace_valid[4:0]`                                               | The corresponding stage owns an instruction ID.                                         |
+| `trace_stall[4:0]`                                               | Valid instruction neither advances nor flushes this cycle.                              |
+| `trace_flush[4:0]`                                               | Stage is invalidated this cycle. Payload outputs are masked.                            |
+| `trace_advance[4:0]`                                             | Stage completes a local step or downstream handoff.                                     |
+| `trace_ids[319:0]`                                               | Unique dynamic instruction ID per stage; zero when invalid.                             |
+| `trace_pcs[319:0]`                                               | PC per stage; zero when invalid.                                                        |
+| `trace_instrs[159:0]`                                            | Instruction word per stage; zero when invalid or while IF still waits for its response. |
+| `trace_events[7:0]`                                              | Redirect, trap, IRQ, MRET, SRET, restart, halt, reset.                                  |
+| `trace_stall_causes[7:0]`                                        | RAW, WAW, scoreboard, IF memory, data memory, execute, frontend held, serializing.      |
+| `trace_retire_valid`                                             | WB entry is consumed, including a faulting instruction.                                 |
+| `trace_retire_arch`                                              | Instruction completed without an exception.                                             |
+| `trace_retire_exception`                                         | Instruction generated an exception.                                                     |
+| `trace_retire_cause`                                             | Exception cause when `trace_retire_exception` is set.                                   |
+| `trace_retire_next_pc`                                           | Sequential or resolved next PC carried by WB.                                           |
+| `trace_retire_rd_write`, `trace_retire_rd`, `trace_retire_wdata` | Architectural GPR update; writes to x0 are suppressed.                                  |
 
 Bit-number constants are in `rtl/core/trace/trace-defs.v` and form part of the
 trace ABI.
@@ -155,22 +155,22 @@ diagnostics, but they are not cycle attribution. `block_lane` names the first
 program-ordered candidate which did not issue and `block_reason` gives one
 exclusive cause. The numeric reason ABI is:
 
-| Value | Name | Meaning |
-| ---: | --- | --- |
-| 0 | `none` | Every presented candidate issued, or the queue was empty. |
-| 1 | `raw_pending` | A source producer exists but has not completed. |
-| 2 | `raw_bundle` | The source is produced by an older candidate issuing in the same bundle. |
-| 3 | `raw_completed` | The producer completed, but the general forwarding map is disabled or did not release this source. |
-| 4 | `waw_pending` | An unfinished older instruction owns the destination. |
-| 5 | `waw_bundle` | An older candidate in the same issue bundle claims the destination. |
-| 6 | `waw_completed` | A completed, unretired instruction still owns the destination. |
-| 7 | `read_port` | The per-register read-port limit rejected the candidate. |
-| 8 | `barrier` | A hard-order instruction prevented allocation. |
-| 9 | `retire_capacity` | The retirement queue capacity gate prevented allocation. |
-| 10 | `pipe_conflict` | An older same-cycle candidate already claimed the selected pipe. |
-| 11 | `pipe_busy` | The selected execution pipe was not ready. |
-| 12 | `invalid_pipe` | Dispatch selected no implemented execution pipe. |
-| 13 | `unknown` | The candidate failed despite all instrumented gates passing. This should remain zero. |
+| Value | Name              | Meaning                                                                                            |
+|------:|-------------------|----------------------------------------------------------------------------------------------------|
+|     0 | `none`            | Every presented candidate issued, or the queue was empty.                                          |
+|     1 | `raw_pending`     | A source producer exists but has not completed.                                                    |
+|     2 | `raw_bundle`      | The source is produced by an older candidate issuing in the same bundle.                           |
+|     3 | `raw_completed`   | The producer completed, but the general forwarding map is disabled or did not release this source. |
+|     4 | `waw_pending`     | An unfinished older instruction owns the destination.                                              |
+|     5 | `waw_bundle`      | An older candidate in the same issue bundle claims the destination.                                |
+|     6 | `waw_completed`   | A completed, unretired instruction still owns the destination.                                     |
+|     7 | `read_port`       | The per-register read-port limit rejected the candidate.                                           |
+|     8 | `barrier`         | A hard-order instruction prevented allocation.                                                     |
+|     9 | `retire_capacity` | The retirement queue capacity gate prevented allocation.                                           |
+|    10 | `pipe_conflict`   | An older same-cycle candidate already claimed the selected pipe.                                   |
+|    11 | `pipe_busy`       | The selected execution pipe was not ready.                                                         |
+|    12 | `invalid_pipe`    | Dispatch selected no implemented execution pipe.                                                   |
+|    13 | `unknown`         | The candidate failed despite all instrumented gates passing. This should remain zero.              |
 
 When multiple hazard bits apply to the same candidate, the exclusive reason
 uses the table order: RAW, WAW, read-port, barrier, retirement capacity, pipe

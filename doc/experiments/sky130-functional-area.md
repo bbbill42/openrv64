@@ -10,24 +10,24 @@ The normal-flow, category-partitioned core is **2,819,708 um^2** of Liberty
 cell area. Sequential cells account for **788,165 um^2**, or **27.95%**.
 The categories are exclusive and sum to 100%.
 
-| Functional block | Area (um^2) | Core size | Sequential area (um^2) | Mapped cells |
-|---|---:|---:|---:|---:|
-| Retirement | 681,084 | 24.15% | 189,231 | 90,357 |
-| Backend control/forwarding | 425,081 | 15.08% | 111,307 | 60,961 |
-| MMU + 256-bit AXI | 371,832 | 13.19% | 176,365 | 40,033 |
-| CSR/PMP | 351,576 | 12.47% | 37,168 | 51,551 |
-| Dispatch/hazards | 273,995 | 9.72% | 46,194 | 36,647 |
-| Integer register file | 182,192 | 6.46% | 49,648 | 26,723 |
-| EX1 integer/M | 168,786 | 5.99% | 32,957 | 24,783 |
-| LSU/MEM pipe | 149,234 | 5.29% | 68,293 | 15,817 |
-| Fetch/line buffers | 95,201 | 3.38% | 40,964 | 9,473 |
-| EX0 integer/branch | 52,497 | 1.86% | 13,113 | 8,030 |
-| Branch predictor | 45,430 | 1.61% | 18,863 | 5,389 |
-| Frontend/core control | 13,985 | 0.50% | 4,061 | 1,633 |
-| Decode, three lanes | 5,225 | 0.19% | 0 | 858 |
-| Trap/redirect vector | 3,590 | 0.13% | 0 | 453 |
-| Fixed AXI wrapper | 0 | 0.00% | 0 | 0 |
-| **Total** | **2,819,708** | **100.00%** | **788,165** | **372,708** |
+| Functional block           |   Area (um^2) |   Core size | Sequential area (um^2) | Mapped cells |
+|----------------------------|--------------:|------------:|-----------------------:|-------------:|
+| Retirement                 |       681,084 |      24.15% |                189,231 |       90,357 |
+| Backend control/forwarding |       425,081 |      15.08% |                111,307 |       60,961 |
+| MMU + 256-bit AXI          |       371,832 |      13.19% |                176,365 |       40,033 |
+| CSR/PMP                    |       351,576 |      12.47% |                 37,168 |       51,551 |
+| Dispatch/hazards           |       273,995 |       9.72% |                 46,194 |       36,647 |
+| Integer register file      |       182,192 |       6.46% |                 49,648 |       26,723 |
+| EX1 integer/M              |       168,786 |       5.99% |                 32,957 |       24,783 |
+| LSU/MEM pipe               |       149,234 |       5.29% |                 68,293 |       15,817 |
+| Fetch/line buffers         |        95,201 |       3.38% |                 40,964 |        9,473 |
+| EX0 integer/branch         |        52,497 |       1.86% |                 13,113 |        8,030 |
+| Branch predictor           |        45,430 |       1.61% |                 18,863 |        5,389 |
+| Frontend/core control      |        13,985 |       0.50% |                  4,061 |        1,633 |
+| Decode, three lanes        |         5,225 |       0.19% |                      0 |          858 |
+| Trap/redirect vector       |         3,590 |       0.13% |                      0 |          453 |
+| Fixed AXI wrapper          |             0 |       0.00% |                      0 |            0 |
+| **Total**                  | **2,819,708** | **100.00%** |            **788,165** |  **372,708** |
 
 The first-order conclusion is that the small branch predictor is not an area
 problem. The predictor, including its direct-target adder, is 1.61%. The large

@@ -40,13 +40,13 @@ in-order pipeline; results still retire in program order.
 All rows below ran the same 112-byte `sw/test.bin`, retired 1,022 instructions,
 returned `a0=100`, and raised no exceptions.
 
-| Forwarding | Load bypass | BP policy | Cycles | IPC |
-| --- | --- | --- | ---: | ---: |
-| off | off | stall | 4,691 | 0.2179 |
-| on | off | stall | 2,971 | 0.3440 |
-| on | on | stall | 2,871 | 0.3560 |
-| on | on | always taken | 2,773 | 0.3686 |
-| on | on | repeat last | 2,774 | 0.3684 |
+| Forwarding | Load bypass | BP policy    | Cycles |    IPC |
+|------------|-------------|--------------|-------:|-------:|
+| off        | off         | stall        |  4,691 | 0.2179 |
+| on         | off         | stall        |  2,971 | 0.3440 |
+| on         | on          | stall        |  2,871 | 0.3560 |
+| on         | on          | always taken |  2,773 | 0.3686 |
+| on         | on          | repeat last  |  2,774 | 0.3684 |
 
 The default forwarding mode removes 1,720 cycles, a 36.7% cycle reduction and
 a 57.9% IPC increase. Full load bypass removes another 100 cycles. The taken

@@ -40,12 +40,12 @@ speculative recovery mechanism.
 
 ## Configurations and top-levels
 
-| Boundary | Backend | Memory boundary | Purpose |
-| --- | --- | --- | --- |
-| `openrv64_l1i_top` | Standalone 256-bit fetch client | Native 512-bit CCX plus external translation service | VIPT L1I integration, synthesis, and trace-replay validation |
-| `openrv64_top` | Selectable 1P or 3P | 64-bit blocking bus; 256-bit AXI is legal only with 3P | General integration wrapper |
-| `openrv64_top_3p` | Fixed 3P | Native 512-bit CCX plus residual 256-bit AXI4 | Primary 3P performance and cache/CCX boundary |
-| `openrv64_platform` | Currently the general wrapper and blocking SoC bus | Integrated ROM, 256 MiB simulation RAM, CLINT, PLIC, UART, GPIO, and timer | Firmware and OpenSBI platform validation |
+| Boundary            | Backend                                            | Memory boundary                                                            | Purpose                                                      |
+|---------------------|----------------------------------------------------|----------------------------------------------------------------------------|--------------------------------------------------------------|
+| `openrv64_l1i_top`  | Standalone 256-bit fetch client                    | Native 512-bit CCX plus external translation service                       | VIPT L1I integration, synthesis, and trace-replay validation |
+| `openrv64_top`      | Selectable 1P or 3P                                | 64-bit blocking bus; 256-bit AXI is legal only with 3P                     | General integration wrapper                                  |
+| `openrv64_top_3p`   | Fixed 3P                                           | Native 512-bit CCX plus residual 256-bit AXI4                              | Primary 3P performance and cache/CCX boundary                |
+| `openrv64_platform` | Currently the general wrapper and blocking SoC bus | Integrated ROM, 256 MiB simulation RAM, CLINT, PLIC, UART, GPIO, and timer | Firmware and OpenSBI platform validation                     |
 
 `OPENRV64_BACKEND_1P` and `OPENRV64_BACKEND_3P` are implemented. The encoded
 2P selection is reserved but not implemented. The specialized 3P top exposes
@@ -161,17 +161,17 @@ admits sequential instructions after the same branch on that edge.
 
 The direction predictor is selected with `BP_TYPE`:
 
-| Value | Policy | Behavior |
-| ---: | --- | --- |
-| 0 | stall | Do not speculate; hold fetch/decode until the control resolves |
-| 1 | always taken | Predict conditional branches taken |
-| 2 | always not taken | Predict conditional branches not taken; direct jumps remain taken |
-| 3 | repeat last | Reuse the most recently resolved conditional direction |
-| 4 | BTFNT | Backward taken, forward not taken |
-| 5 | bimodal | PC-indexed saturating-counter table with BTFNT cold behavior |
-| 6 | gshare + BTB | 256-entry global-history direction table, 256-entry tagged JALR target table, speculative history recovery, and RAS |
-| 7 | gshare-512 + BTB | Fixed 512-entry three-bit direction table with nine history bits; otherwise the mode-6 target and recovery machinery |
-| 8 | tournament + BTB | 2048-entry global PHT, 512-entry local-history table, 1024-entry local PHT, 512-entry chooser, mode-6 BTB/recovery, and RAS |
+| Value | Policy           | Behavior                                                                                                                    |
+|------:|------------------|-----------------------------------------------------------------------------------------------------------------------------|
+|     0 | stall            | Do not speculate; hold fetch/decode until the control resolves                                                              |
+|     1 | always taken     | Predict conditional branches taken                                                                                          |
+|     2 | always not taken | Predict conditional branches not taken; direct jumps remain taken                                                           |
+|     3 | repeat last      | Reuse the most recently resolved conditional direction                                                                      |
+|     4 | BTFNT            | Backward taken, forward not taken                                                                                           |
+|     5 | bimodal          | PC-indexed saturating-counter table with BTFNT cold behavior                                                                |
+|     6 | gshare + BTB     | 256-entry global-history direction table, 256-entry tagged JALR target table, speculative history recovery, and RAS         |
+|     7 | gshare-512 + BTB | Fixed 512-entry three-bit direction table with nine history bits; otherwise the mode-6 target and recovery machinery        |
+|     8 | tournament + BTB | 2048-entry global PHT, 512-entry local-history table, 1024-entry local PHT, 512-entry chooser, mode-6 BTB/recovery, and RAS |
 
 The public default is the conservative stall policy. The implemented bimodal
 defaults are 32 entries, three counter bits, and a four-entry update FIFO. The
@@ -305,12 +305,12 @@ form a strict program-order prefix:
 Capability routing is fixed where required and flexible for base integer ALU
 operations:
 
-| Instruction class | Pipe |
-| --- | --- |
-| Branch, jump, system/CSR, fence, decoded fault | EX1 |
-| RV64M | EX0 |
-| Load, store, RV64A | MEM |
-| Base integer ALU | EX0 or EX1 |
+| Instruction class                              | Pipe       |
+|------------------------------------------------|------------|
+| Branch, jump, system/CSR, fence, decoded fault | EX1        |
+| RV64M                                          | EX0        |
+| Load, store, RV64A                             | MEM        |
+| Base integer ALU                               | EX0 or EX1 |
 
 The router tries to preserve a fixed-capability lane for a following candidate
 and, for the local ALU bypass, prefers the pipe that owns the producer.
@@ -567,9 +567,9 @@ Cacheless instruction reads use a 32-byte transfer. IDs 0-3 identify its four
 instruction-line slots. IDs 4-7 are currently unused; L1D and PTW requests use
 native CCX rather than AXI.
 
-| AXI ID | Owner |
-| ---: | --- |
-| 0-3 | Instruction-line reads |
+| AXI ID | Owner                  |
+|-------:|------------------------|
+|    0-3 | Instruction-line reads |
 There are no AXI data operations, multi-beat bursts, cache refills, exclusive
 accesses, or coherence transactions.
 
@@ -577,15 +577,15 @@ accesses, or coherence transactions.
 
 The common physical map is:
 
-| Target | Base | Size |
-| --- | ---: | ---: |
-| Boot ROM | `0x0000_1000` | 64 KiB |
-| CLINT | `0x0200_0000` | 64 KiB |
-| PLIC | `0x0c00_0000` | 64 MiB |
-| UART | `0x1000_0000` | 256 B |
-| GPIO | `0x1001_0000` | 4 KiB |
-| Timer | `0x1002_0000` | 4 KiB |
-| RAM | `0x8000_0000` | 256 MiB |
+| Target   |          Base |    Size |
+|----------|--------------:|--------:|
+| Boot ROM | `0x0000_1000` |  64 KiB |
+| CLINT    | `0x0200_0000` |  64 KiB |
+| PLIC     | `0x0c00_0000` |  64 MiB |
+| UART     | `0x1000_0000` |   256 B |
+| GPIO     | `0x1001_0000` |   4 KiB |
+| Timer    | `0x1002_0000` |   4 KiB |
+| RAM      | `0x8000_0000` | 256 MiB |
 
 The integrated generic-bus platform resets at ROM, whose three-instruction
 stub jumps to RAM at `0x8000_0000`. The AXI performance testbench normally
@@ -694,33 +694,33 @@ load bypass. See [forwarding.md](forwarding.md).
 The defaults on `openrv64_top_3p` are intentionally conservative except for
 ordered WAW relaxation:
 
-| Parameter | Default | Meaning |
-| --- | ---: | --- |
-| `RETIRE_DEPTH` | 8 | Retirement/completion entries |
-| `ENABLE_RV64M` | 0 | Iterative M execution disabled |
-| `ENABLE_RV64A` | 1 | Serialized atomics enabled |
-| `RELAX_WAW` | 1 | Multiple ordered writers to one architectural rd allowed |
-| `RELAX_HAZARDS` | 0 | Youngest-producer result table disabled |
-| `BRANCH_COMPLETION_FORWARD_MASK` | `111` | Producer-slot-qualified EX0/EX1/MEM bypass to conditional branches |
-| `COMPLETION_FORWARD_MASK` | `000` | Cross-pipe live completion bypass disabled |
-| `ENABLE_FULL_FORWARDING` | 0 | Completed retirement-entry map disabled |
-| `ENABLE_ISSUE_WINDOW` | 0 | Six-entry strict-prefix dispatch selected |
-| `STORE_QUEUE_DEPTH` | 4 | Pre-retire speculative store entries |
-| `ENABLE_POSTED_STORES` | 1 | Compatibility parameter; 3P completion still waits for L1D admission |
-| `ENABLE_EQ_BRANCH_PAIRING` | 1 | Proved-correct BEQ/BNE may retain younger predicted-path issue |
-| `FREE_BRANCHES` | 0 | Diagnostic branch completion at dispatch disabled |
-| `BP_TYPE` | 8 | Tournament direction predictor, tagged indirect BTB, and RAS |
-| `BP_RAS_ENABLE` | 1 | RAS hardware elaborated |
-| `BP_RAS_DEPTH` | 8 | Return stack entries |
-| `BP_BIMODAL_ENTRIES` | 32 | Bimodal direction entries when selected |
-| `BP_BIMODAL_COUNTER_BITS` | 3 | Saturating counter width |
-| `BP_BIMODAL_UPDATE_DEPTH` | 4 | Serialized predictor update FIFO |
-| `BP_GSHARE_ENTRIES` | 256 | Gshare PHT entries when mode 6 is selected; mode 7 is fixed at 512 |
-| `BP_GSHARE_COUNTER_BITS` | 3 | Gshare saturating counter width |
-| `BP_BTB_ENTRIES` | 256 | Tagged indirect-target entries |
-| `BP_BTB_TAG_BITS` | 16 | Indirect-target tag width |
-| `BP_INFLIGHT_DEPTH` | 16 | Ordered prediction/checkpoint records |
-| `ENABLE_PREDECODE_TARGETS` | 1 | Direct PC-relative target sidecar enabled |
+| Parameter                        | Default | Meaning                                                              |
+|----------------------------------|--------:|----------------------------------------------------------------------|
+| `RETIRE_DEPTH`                   |       8 | Retirement/completion entries                                        |
+| `ENABLE_RV64M`                   |       0 | Iterative M execution disabled                                       |
+| `ENABLE_RV64A`                   |       1 | Serialized atomics enabled                                           |
+| `RELAX_WAW`                      |       1 | Multiple ordered writers to one architectural rd allowed             |
+| `RELAX_HAZARDS`                  |       0 | Youngest-producer result table disabled                              |
+| `BRANCH_COMPLETION_FORWARD_MASK` |   `111` | Producer-slot-qualified EX0/EX1/MEM bypass to conditional branches   |
+| `COMPLETION_FORWARD_MASK`        |   `000` | Cross-pipe live completion bypass disabled                           |
+| `ENABLE_FULL_FORWARDING`         |       0 | Completed retirement-entry map disabled                              |
+| `ENABLE_ISSUE_WINDOW`            |       0 | Six-entry strict-prefix dispatch selected                            |
+| `STORE_QUEUE_DEPTH`              |       4 | Pre-retire speculative store entries                                 |
+| `ENABLE_POSTED_STORES`           |       1 | Compatibility parameter; 3P completion still waits for L1D admission |
+| `ENABLE_EQ_BRANCH_PAIRING`       |       1 | Proved-correct BEQ/BNE may retain younger predicted-path issue       |
+| `FREE_BRANCHES`                  |       0 | Diagnostic branch completion at dispatch disabled                    |
+| `BP_TYPE`                        |       8 | Tournament direction predictor, tagged indirect BTB, and RAS         |
+| `BP_RAS_ENABLE`                  |       1 | RAS hardware elaborated                                              |
+| `BP_RAS_DEPTH`                   |       8 | Return stack entries                                                 |
+| `BP_BIMODAL_ENTRIES`             |      32 | Bimodal direction entries when selected                              |
+| `BP_BIMODAL_COUNTER_BITS`        |       3 | Saturating counter width                                             |
+| `BP_BIMODAL_UPDATE_DEPTH`        |       4 | Serialized predictor update FIFO                                     |
+| `BP_GSHARE_ENTRIES`              |     256 | Gshare PHT entries when mode 6 is selected; mode 7 is fixed at 512   |
+| `BP_GSHARE_COUNTER_BITS`         |       3 | Gshare saturating counter width                                      |
+| `BP_BTB_ENTRIES`                 |     256 | Tagged indirect-target entries                                       |
+| `BP_BTB_TAG_BITS`                |      16 | Indirect-target tag width                                            |
+| `BP_INFLIGHT_DEPTH`              |      16 | Ordered prediction/checkpoint records                                |
+| `ENABLE_PREDECODE_TARGETS`       |       1 | Direct PC-relative target sidecar enabled                            |
 
 Performance experiments commonly select alternate predictor modes, live or
 full forwarding, and aggressive hazards. Those are valid RTL configurations,

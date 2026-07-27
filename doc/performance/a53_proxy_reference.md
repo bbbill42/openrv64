@@ -14,11 +14,11 @@ Cortex-A53 silicon performance.
 
 ## Headline result
 
-| Core/model | ISA | Retired instructions | Cycles | IPC |
-| --- | --- | ---: | ---: | ---: |
-| ARM gem5 HPI reference | AArch64 | 58,695 | 72,146 | 0.813559 |
-| OpenRV64 1P, repeat-last BP | RV64I | 52,547 | 141,804 | 0.3706 |
-| OpenRV64 3P, repeat-last BP | RV64I | 52,547 | 185,775 | 0.2829 |
+| Core/model                  | ISA     | Retired instructions |  Cycles |      IPC |
+|-----------------------------|---------|---------------------:|--------:|---------:|
+| ARM gem5 HPI reference      | AArch64 |               58,695 |  72,146 | 0.813559 |
+| OpenRV64 1P, repeat-last BP | RV64I   |               52,547 | 141,804 |   0.3706 |
+| OpenRV64 3P, repeat-last BP | RV64I   |               52,547 | 185,775 |   0.2829 |
 
 At the same clock rate, the saved HPI run completes the workload 1.966 times
 faster than the 1P snapshot and 2.575 times faster than the 3P snapshot. The
@@ -40,14 +40,14 @@ to dispatch; the 64-bit value is not broadcast between pipes.
 
 The resulting comparison is:
 
-| Workload | Core/model | Retired instructions | Cycles | IPC |
-| --- | --- | ---: | ---: | ---: |
-| `test.elf` resident loop | OpenRV64 1P | 308 | 329 | 0.9362 |
-| `test.elf` resident loop | OpenRV64 3P, local RAW forwarding | 308 | 323 | 0.9536 |
-| CoreMark-derived loop | ARM gem5 HPI reference | 58,695 | 72,146 | 0.813559 |
-| CoreMark-derived loop | OpenRV64 1P | 52,547 | 141,804 | 0.3706 |
-| CoreMark-derived loop | OpenRV64 3P baseline | 52,547 | 185,775 | 0.2829 |
-| CoreMark-derived loop | OpenRV64 3P, local RAW forwarding | 52,547 | 184,959 | 0.2841 |
+| Workload                 | Core/model                        | Retired instructions |  Cycles |      IPC |
+|--------------------------|-----------------------------------|---------------------:|--------:|---------:|
+| `test.elf` resident loop | OpenRV64 1P                       |                  308 |     329 |   0.9362 |
+| `test.elf` resident loop | OpenRV64 3P, local RAW forwarding |                  308 |     323 |   0.9536 |
+| CoreMark-derived loop    | ARM gem5 HPI reference            |               58,695 |  72,146 | 0.813559 |
+| CoreMark-derived loop    | OpenRV64 1P                       |               52,547 | 141,804 |   0.3706 |
+| CoreMark-derived loop    | OpenRV64 3P baseline              |               52,547 | 185,775 |   0.2829 |
+| CoreMark-derived loop    | OpenRV64 3P, local RAW forwarding |               52,547 | 184,959 |   0.2841 |
 
 The remembered approximately 0.9 IPC result therefore applies to the tiny
 resident `test.elf` loop, and both cores still achieve it.  It does not apply
@@ -58,15 +58,15 @@ times the HPI reference's cycles.
 
 The full traced counter delta explains why the speedup is small:
 
-| 3P CoreMark-derived counter | Baseline | Local forwarding | Delta |
-| --- | ---: | ---: | ---: |
-| Total cycles | 185,775 | 184,959 | -816 |
-| Issue active cycles | 41,840 | 41,904 | +64 |
-| Three-lane issue utilization | 9.43% | 9.47% | +0.04 points |
-| Dispatch nonempty, no issue | 111,250 | 110,370 | -880 |
-| Any queued RAW indication | 114,030 | 109,818 | -4,212 |
-| Retire queue nonempty, no retirement | 119,554 | 118,674 | -880 |
-| Three-wide issue cycles | 241 | 241 | 0 |
+| 3P CoreMark-derived counter          | Baseline | Local forwarding |        Delta |
+|--------------------------------------|---------:|-----------------:|-------------:|
+| Total cycles                         |  185,775 |          184,959 |         -816 |
+| Issue active cycles                  |   41,840 |           41,904 |          +64 |
+| Three-lane issue utilization         |    9.43% |            9.47% | +0.04 points |
+| Dispatch nonempty, no issue          |  111,250 |          110,370 |         -880 |
+| Any queued RAW indication            |  114,030 |          109,818 |       -4,212 |
+| Retire queue nonempty, no retirement |  119,554 |          118,674 |         -880 |
+| Three-wide issue cycles              |      241 |              241 |            0 |
 
 This mechanism forwards only the completion visible in the immediately next
 cycle.  A cross-pipe dependency, a load result, an older result whose local
@@ -138,14 +138,14 @@ queue, execution, and commit.
 
 The configured functional units are:
 
-| HPI unit | Count | Operation latency | Issue interval | Important role |
-| --- | ---: | ---: | ---: | --- |
-| Integer ALU | 2 | 3 cycles | 1 cycle | General integer and branch work |
-| Integer multiply | 1 | 3 cycles | 1 cycle | Multiply and multiply-add |
-| Integer divide | 1 | 3 cycles in this model | 3 cycles | Integer division |
-| Float/SIMD | 1 | 6 cycles | 1 cycle | AArch64 SIMD/FP operations |
-| Memory | 1 | 1 cycle plus memory system | 1 cycle | Loads and stores through LSQ |
-| Miscellaneous | 1 | 1 cycle | 1 cycle | System and prefetch operations |
+| HPI unit         | Count |          Operation latency | Issue interval | Important role                  |
+|------------------|------:|---------------------------:|---------------:|---------------------------------|
+| Integer ALU      |     2 |                   3 cycles |        1 cycle | General integer and branch work |
+| Integer multiply |     1 |                   3 cycles |        1 cycle | Multiply and multiply-add       |
+| Integer divide   |     1 |     3 cycles in this model |       3 cycles | Integer division                |
+| Float/SIMD       |     1 |                   6 cycles |        1 cycle | AArch64 SIMD/FP operations      |
+| Memory           |     1 | 1 cycle plus memory system |        1 cycle | Loads and stores through LSQ    |
+| Miscellaneous    |     1 |                    1 cycle |        1 cycle | System and prefetch operations  |
 
 HPI is still an in-order machine. It does not skip a blocked oldest
 instruction to issue a younger independent instruction. Its important
@@ -258,16 +258,16 @@ local loops, but it cannot cover the complete branch-heavy traversal.
 
 ### Where HPI has an architectural advantage
 
-| Mechanism | gem5 HPI proxy | OpenRV64 3P snapshot | Expected consequence here |
-| --- | --- | --- | --- |
-| Instruction storage | 32 KiB, two-way L1I, 64 B lines | Four direct-mapped 32 B lines, 128 B total | HPI retains the full hot text; 3P repeatedly replaces lines |
-| Conditional prediction | Local/global tournament plus chooser | One global bit: repeat the last conditional outcome | HPI separates unrelated branch histories |
-| Calls and returns | BTB, indirect predictor, eight-entry RAS | Direct targets from predecode; targetless indirect jumps stall | HPI predicts returns; every RV64 `jalr` call/return can stop 3P fetch |
-| Dependency handling | Latency-aware scoreboard and forwarding | Destination busy from issue through retirement | HPI overlaps dependent integer work instead of waiting for commit |
-| Integer issue | Two pipelined integer ALUs | Two ALU-capable pipes, but fixed routing and strict prefix | Similar nominal ALU count; HPI exposes it much more often |
-| Memory scheduling | Early LSQ issue and store buffering | One fixed MEM pipe and conservative ordered-head checks | HPI can decouple memory work from commit more effectively |
-| Admission/retirement | Buffered execute input, two-wide in-order commit | Six dispatch, eight retire, full-three-slot admission gate | 3P's wider retirement does not help when the head or capacity gate blocks |
-| ISA/code generation | AArch64 has rotate, pair load/store, and SIMD idioms | RV64I uses separate shifts/adds and scalar initialization | Some local AArch64 sequences are denser, but this is not the main measured win |
+| Mechanism              | gem5 HPI proxy                                       | OpenRV64 3P snapshot                                           | Expected consequence here                                                      |
+|------------------------|------------------------------------------------------|----------------------------------------------------------------|--------------------------------------------------------------------------------|
+| Instruction storage    | 32 KiB, two-way L1I, 64 B lines                      | Four direct-mapped 32 B lines, 128 B total                     | HPI retains the full hot text; 3P repeatedly replaces lines                    |
+| Conditional prediction | Local/global tournament plus chooser                 | One global bit: repeat the last conditional outcome            | HPI separates unrelated branch histories                                       |
+| Calls and returns      | BTB, indirect predictor, eight-entry RAS             | Direct targets from predecode; targetless indirect jumps stall | HPI predicts returns; every RV64 `jalr` call/return can stop 3P fetch          |
+| Dependency handling    | Latency-aware scoreboard and forwarding              | Destination busy from issue through retirement                 | HPI overlaps dependent integer work instead of waiting for commit              |
+| Integer issue          | Two pipelined integer ALUs                           | Two ALU-capable pipes, but fixed routing and strict prefix     | Similar nominal ALU count; HPI exposes it much more often                      |
+| Memory scheduling      | Early LSQ issue and store buffering                  | One fixed MEM pipe and conservative ordered-head checks        | HPI can decouple memory work from commit more effectively                      |
+| Admission/retirement   | Buffered execute input, two-wide in-order commit     | Six dispatch, eight retire, full-three-slot admission gate     | 3P's wider retirement does not help when the head or capacity gate blocks      |
+| ISA/code generation    | AArch64 has rotate, pair load/store, and SIMD idioms | RV64I uses separate shifts/adds and scalar initialization      | Some local AArch64 sequences are denser, but this is not the main measured win |
 
 The ISA row needs restraint. AArch64 uses useful instructions in this binary,
 including `ror`, `stp`/`ldp`, and SIMD updates to adjacent counters. Some of
@@ -292,11 +292,11 @@ QEMU runs the bare-metal AArch64 ELF on `-M virt` with `-cpu cortex-a53`.
 one dynamic instruction, allowing the trace parser to count the executed
 instruction path.
 
-| Counter | Result |
-| --- | ---: |
-| Translation blocks | 58,706 |
+| Counter                                        | Result |
+|------------------------------------------------|-------:|
+| Translation blocks                             | 58,706 |
 | Instructions before the final semihosting exit | 58,705 |
-| Distinct dynamic PCs | 261 |
+| Distinct dynamic PCs                           |    261 |
 
 The QEMU count is ten instructions above gem5's committed count because the
 bare-metal and syscall-emulation entry/exit wrappers differ. QEMU TCG does
@@ -308,32 +308,32 @@ not model Cortex-A53 cycles, so no QEMU timing, CPI, or IPC number is used.
 The timing run uses gem5 syscall-emulation mode and the same C body compiled
 for AArch64. Its compact counters are:
 
-| Counter | Result | Interpretation |
-| --- | ---: | --- |
-| CPU cycles | 72,146 | HPI model cycles at the configured 1 GHz |
-| Committed instructions | 58,695 | Architectural AArch64 instructions |
-| IPC | 0.813559 | Committed instructions divided by cycles |
-| Fetched instructions | 72,934 | Includes work later discarded |
-| Fetch rate | 1.010922/cycle | Below the two-wide maximum |
-| Fetched over committed | 24.26% | Frontend/wrong-path surplus |
-| Committed branches | 18,642 | 31.76% of committed instructions |
-| Branch mispredictions | 1,508 | 8.09% of committed branches |
-| Discarded micro-ops | 4,432 | Squashed before commit |
-| L1I demand misses | 20 | Cold/compulsory footprint is small |
-| L1D demand misses | 14 | Data footprint is also small |
+| Counter                |         Result | Interpretation                           |
+|------------------------|---------------:|------------------------------------------|
+| CPU cycles             |         72,146 | HPI model cycles at the configured 1 GHz |
+| Committed instructions |         58,695 | Architectural AArch64 instructions       |
+| IPC                    |       0.813559 | Committed instructions divided by cycles |
+| Fetched instructions   |         72,934 | Includes work later discarded            |
+| Fetch rate             | 1.010922/cycle | Below the two-wide maximum               |
+| Fetched over committed |         24.26% | Frontend/wrong-path surplus              |
+| Committed branches     |         18,642 | 31.76% of committed instructions         |
+| Branch mispredictions  |          1,508 | 8.09% of committed branches              |
+| Discarded micro-ops    |          4,432 | Squashed before commit                   |
+| L1I demand misses      |             20 | Cold/compulsory footprint is small       |
+| L1D demand misses      |             14 | Data footprint is also small             |
 
 A separate `MinorExecute` diagnostic run recorded the following event-cycle
 counts. These conditions overlap and therefore must not be added into a
 single stall total.
 
-| HPI execute diagnostic | Cycles | Percent of run |
-| --- | ---: | ---: |
-| Any failed issue attempt | 27,653 | 38.33% |
-| Dependency-blocked issue attempt | 23,093 | 32.01% |
-| Functional-unit blocked attempt | 4,946 | 6.86% |
-| Two-issue limit reached | 17,524 | 24.29% |
-| Two-commit limit reached | 17,579 | 24.37% |
-| One-memory-commit limit reached | 13,207 | 18.31% |
+| HPI execute diagnostic           | Cycles | Percent of run |
+|----------------------------------|-------:|---------------:|
+| Any failed issue attempt         | 27,653 |         38.33% |
+| Dependency-blocked issue attempt | 23,093 |         32.01% |
+| Functional-unit blocked attempt  |  4,946 |          6.86% |
+| Two-issue limit reached          | 17,524 |         24.29% |
+| Two-commit limit reached         | 17,579 |         24.37% |
+| One-memory-commit limit reached  | 13,207 |         18.31% |
 
 The HPI model configuration is:
 
@@ -361,18 +361,18 @@ forwarding, and load forwarding disabled. Its testbench memory is a 64 KiB,
 64-bit array with `mem_ready` asserted whenever `mem_valid` is asserted. It
 has no modeled DRAM or cache miss latency.
 
-| 1P stage/cause | Cycles | Percent of run |
-| --- | ---: | ---: |
-| IF occupied | 131,781 | 92.93% |
-| ID occupied | 90,462 | 63.79% |
-| EX occupied | 73,469 | 51.81% |
-| MEM occupied | 84,557 | 59.63% |
-| WB occupied | 52,548 | 37.06% |
-| RAW/scoreboard stall | 28,124 | 19.83% |
-| Instruction-memory pipeline stall | 18,614 | 13.13% |
-| Data-memory pipeline stall | 32,009 | 22.57% |
-| Execute stall | 20,921 | 14.75% |
-| Frontend held | 38,132 | 26.89% |
+| 1P stage/cause                    |  Cycles | Percent of run |
+|-----------------------------------|--------:|---------------:|
+| IF occupied                       | 131,781 |         92.93% |
+| ID occupied                       |  90,462 |         63.79% |
+| EX occupied                       |  73,469 |         51.81% |
+| MEM occupied                      |  84,557 |         59.63% |
+| WB occupied                       |  52,548 |         37.06% |
+| RAW/scoreboard stall              |  28,124 |         19.83% |
+| Instruction-memory pipeline stall |  18,614 |         13.13% |
+| Data-memory pipeline stall        |  32,009 |         22.57% |
+| Execute stall                     |  20,921 |         14.75% |
+| Frontend held                     |  38,132 |         26.89% |
 
 Those stall labels are internal pipeline conditions. In particular,
 `if-memory` and `data-memory` do not mean the testbench inserted a DRAM wait
@@ -390,22 +390,22 @@ registered response, and core-internal fetch/LSU latency still consume cycles.
 The stage utilization was:
 
 | 3P stage | Active cycles | Occupied lane-slots | Three-lane utilization |
-| --- | ---: | ---: | ---: |
-| Fetch | 130,584 | 383,996 | 68.90% |
-| Decode | 102,769 | 235,871 | 42.32% |
-| Issue | 41,840 | 52,549 | 9.43% |
-| Complete | 48,058 | 52,548 | 9.43% |
-| Retire | 41,607 | 52,548 | 9.43% |
+|----------|--------------:|--------------------:|-----------------------:|
+| Fetch    |       130,584 |             383,996 |                 68.90% |
+| Decode   |       102,769 |             235,871 |                 42.32% |
+| Issue    |        41,840 |              52,549 |                  9.43% |
+| Complete |        48,058 |              52,548 |                  9.43% |
+| Retire   |        41,607 |              52,548 |                  9.43% |
 
 The architectural issue and retirement width distribution makes the loss of
 width explicit:
 
 | Width in a cycle | Issue cycles | Percent of all cycles | Retire cycles | Percent of all cycles |
-| ---: | ---: | ---: | ---: | ---: |
-| 0 | 143,935 | 77.48% | 144,169 | 77.60% |
-| 1 | 31,372 | 16.89% | 31,258 | 16.83% |
-| 2 | 10,227 | 5.51% | 9,755 | 5.25% |
-| 3 | 241 | 0.13% | 593 | 0.32% |
+|-----------------:|-------------:|----------------------:|--------------:|----------------------:|
+|                0 |      143,935 |                77.48% |       144,169 |                77.60% |
+|                1 |       31,372 |                16.89% |        31,258 |                16.83% |
+|                2 |       10,227 |                 5.51% |         9,755 |                 5.25% |
+|                3 |          241 |                 0.13% |           593 |                 0.32% |
 
 Of the cycles that issue anything, 74.98% issue only one instruction and just
 0.58% issue three. The 3P core is therefore not losing primarily because the
@@ -414,19 +414,19 @@ unable to turn queued instructions into multiple issues.
 
 The trace's cycle predicates were:
 
-| 3P condition | Cycles | Percent of run |
-| --- | ---: | ---: |
-| Frontend empty | 55,191 | 29.71% |
-| Frontend held | 83,420 | 44.90% |
-| Dispatch queue nonempty but no issue | 111,250 | 59.88% |
-| Queued RAW hazard present | 114,030 | 61.38% |
-| Queued WAW hazard present | 55,541 | 29.90% |
-| Queued read-port hazard present | 2,288 | 1.23% |
-| Queued serialization barrier present | 586 | 0.32% |
-| Retire queue nonempty but no retirement | 119,554 | 64.35% |
-| Branch-predictor stall | 42,195 | 22.71% |
-| Redirect/correction | 7,218 | 3.89% |
-| Fetch request waiting for AXI acceptance | 0 | 0.00% |
+| 3P condition                             |  Cycles | Percent of run |
+|------------------------------------------|--------:|---------------:|
+| Frontend empty                           |  55,191 |         29.71% |
+| Frontend held                            |  83,420 |         44.90% |
+| Dispatch queue nonempty but no issue     | 111,250 |         59.88% |
+| Queued RAW hazard present                | 114,030 |         61.38% |
+| Queued WAW hazard present                |  55,541 |         29.90% |
+| Queued read-port hazard present          |   2,288 |          1.23% |
+| Queued serialization barrier present     |     586 |          0.32% |
+| Retire queue nonempty but no retirement  | 119,554 |         64.35% |
+| Branch-predictor stall                   |  42,195 |         22.71% |
+| Redirect/correction                      |   7,218 |          3.89% |
+| Fetch request waiting for AXI acceptance |       0 |          0.00% |
 
 These are overlapping predicates, not an additive CPI stack. `axi_wait=0`
 means the fetch request was never held off at the AXI address-acceptance
@@ -471,35 +471,35 @@ retire-queue occupancy. Issue entries are printed in physical pipe order
 
 The relevant RV64 instructions are:
 
-| UID | PC | Instruction |
-| --- | --- | --- |
-| `8` | `80000518` | `addi sp,sp,-32` |
-| `9` | `8000051c` | `sd s0,16(sp)` |
-| `a` | `80000520` | `auipc s0,0` |
-| `b` | `80000524` | `lw s0,424(s0)` |
-| `c` | `80000528` | `sd s1,8(sp)` |
-| `d` | `8000052c` | `sd ra,24(sp)` |
-| `e` | `80000530` | `li s1,8` |
-| `f` | `80000534` | `auipc ra,0` |
-| `10` | `80000538` | `jalr` to `scan_input` |
+| UID  | PC         | Instruction                           |
+|------|------------|---------------------------------------|
+| `8`  | `80000518` | `addi sp,sp,-32`                      |
+| `9`  | `8000051c` | `sd s0,16(sp)`                        |
+| `a`  | `80000520` | `auipc s0,0`                          |
+| `b`  | `80000524` | `lw s0,424(s0)`                       |
+| `c`  | `80000528` | `sd s1,8(sp)`                         |
+| `d`  | `8000052c` | `sd ra,24(sp)`                        |
+| `e`  | `80000530` | `li s1,8`                             |
+| `f`  | `80000534` | `auipc ra,0`                          |
+| `10` | `80000538` | `jalr` to `scan_input`                |
 | `11` | `8000053c` | `xor a0,a0,s0` on the sequential path |
 
 A compact rendering of cycles 25-71 is:
 
-| Cycle(s) | Important state | What it means |
-| --- | --- | --- |
-| 25-28 | Fetch/decode quickly fill; at 28, `I=a/9`, `R=8`, `dq/rq=6/1` | The frontend can supply bundles and two physical pipes can issue together |
-| 29-37 | Fetch holds `11@053c` and younger instructions; no issue; `dq/rq=6/2`; RAW, WAW, BP stall | A full dispatch queue cannot make progress while issued writers remain busy and the indirect jump is unresolved |
-| 38 | `I=b`, `R=9/a`, `dq/rq=6/2` | Retirement clears the busy producer and the dependent load can finally issue |
-| 39-44 | No issue; fetch remains held | The backend again drains serially |
-| 45-46 | `I=c`, then `R=b` | One more store becomes admissible after the load progresses |
-| 47-53 | No issue; `dq/rq=4/1` | Four decoded instructions wait despite free frontend bandwidth |
-| 54 | `I=e/f/d`, `C=c` | A genuine three-issue cycle: ALU `e` uses EX0, ALU `f` EX1, and older store `d` MEM |
-| 55-63 | `C=e/f`, `R=c`, then no issue until `C=d`; RAW, WAW, BP stall | Completion alone does not release destination busy state; the head group must reach retirement |
-| 64 | `I=10`, `R=d/e/f`, redirect | The indirect `jalr` issues only when the older prefix retires; its resolved target restarts fetch |
-| 65-66 | Complete and retire `10`; barrier active | The ordered control instruction drains through the backend |
-| 67-69 | All architectural stages empty | Redirect/refill bubble |
-| 70-71 | Target fetch resumes at `8000042c`; two target instructions issue at 71 | Useful work restarts roughly six cycles after the redirecting issue |
+| Cycle(s) | Important state                                                                           | What it means                                                                                                   |
+|----------|-------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------|
+| 25-28    | Fetch/decode quickly fill; at 28, `I=a/9`, `R=8`, `dq/rq=6/1`                             | The frontend can supply bundles and two physical pipes can issue together                                       |
+| 29-37    | Fetch holds `11@053c` and younger instructions; no issue; `dq/rq=6/2`; RAW, WAW, BP stall | A full dispatch queue cannot make progress while issued writers remain busy and the indirect jump is unresolved |
+| 38       | `I=b`, `R=9/a`, `dq/rq=6/2`                                                               | Retirement clears the busy producer and the dependent load can finally issue                                    |
+| 39-44    | No issue; fetch remains held                                                              | The backend again drains serially                                                                               |
+| 45-46    | `I=c`, then `R=b`                                                                         | One more store becomes admissible after the load progresses                                                     |
+| 47-53    | No issue; `dq/rq=4/1`                                                                     | Four decoded instructions wait despite free frontend bandwidth                                                  |
+| 54       | `I=e/f/d`, `C=c`                                                                          | A genuine three-issue cycle: ALU `e` uses EX0, ALU `f` EX1, and older store `d` MEM                             |
+| 55-63    | `C=e/f`, `R=c`, then no issue until `C=d`; RAW, WAW, BP stall                             | Completion alone does not release destination busy state; the head group must reach retirement                  |
+| 64       | `I=10`, `R=d/e/f`, redirect                                                               | The indirect `jalr` issues only when the older prefix retires; its resolved target restarts fetch               |
+| 65-66    | Complete and retire `10`; barrier active                                                  | The ordered control instruction drains through the backend                                                      |
+| 67-69    | All architectural stages empty                                                            | Redirect/refill bubble                                                                                          |
+| 70-71    | Target fetch resumes at `8000042c`; two target instructions issue at 71                   | Useful work restarts roughly six cycles after the redirecting issue                                             |
 
 This window directly answers the fetch question. Fetch is not continuously
 starved: it has already placed `xor` and following sequential instructions on
@@ -524,18 +524,18 @@ code contains alternating compares and conditional branches. HPI's two
 integer units can pair the branch consuming the previous flags with the next
 independent compare that creates a new set of flags:
 
-| HPI cycle | Commit/completion | New issue | Blocked oldest operation |
-| ---: | --- | --- | --- |
-| 710 | Early memory issue of `ldrb@400044` | none | `subs@400048` waits for the byte |
-| 711 | `cbz@40003c` and `movz@400040` | `subs@400048` | `b.eq@40004c` waits for flags |
-| 712 | `ldrb@400044` | `b.eq@40004c` + `subs@400050` | none after two-issue limit |
-| 713 | none | `b.eq@400054` + `subs@400058` | none after two-issue limit |
-| 714 | `subs@400048` | `b.eq@40005c` + `subs@400060` | none after two-issue limit |
-| 715 | `b.eq@40004c` + `subs@400050` | `b.eq@400064` + `subs@400068` | none after two-issue limit |
-| 716 | `b.eq@400054` + `subs@400058` | `b.ne@40006c` + `sub@400070` | none after two-issue limit |
-| 717 | `b.eq@40005c` + `subs@400060` | `and@400074` | `subs@400078` waits on a true dependency |
-| 718 | `b.eq@400064` + `subs@400068` | `subs@400078` | `b@40007c` waits for flags |
-| 719 | `b.ne@40006c`, taken | redirect to `4001f0` | younger stream is discarded |
+| HPI cycle | Commit/completion                   | New issue                     | Blocked oldest operation                 |
+|----------:|-------------------------------------|-------------------------------|------------------------------------------|
+|       710 | Early memory issue of `ldrb@400044` | none                          | `subs@400048` waits for the byte         |
+|       711 | `cbz@40003c` and `movz@400040`      | `subs@400048`                 | `b.eq@40004c` waits for flags            |
+|       712 | `ldrb@400044`                       | `b.eq@40004c` + `subs@400050` | none after two-issue limit               |
+|       713 | none                                | `b.eq@400054` + `subs@400058` | none after two-issue limit               |
+|       714 | `subs@400048`                       | `b.eq@40005c` + `subs@400060` | none after two-issue limit               |
+|       715 | `b.eq@40004c` + `subs@400050`       | `b.eq@400064` + `subs@400068` | none after two-issue limit               |
+|       716 | `b.eq@400054` + `subs@400058`       | `b.ne@40006c` + `sub@400070`  | none after two-issue limit               |
+|       717 | `b.eq@40005c` + `subs@400060`       | `and@400074`                  | `subs@400078` waits on a true dependency |
+|       718 | `b.eq@400064` + `subs@400068`       | `subs@400078`                 | `b@40007c` waits for flags               |
+|       719 | `b.ne@40006c`, taken                | redirect to `4001f0`          | younger stream is discarded              |
 
 This is not out-of-order issue: whenever the oldest instruction is blocked,
 HPI stops. The difference is that the scoreboard makes the block last only
@@ -589,12 +589,12 @@ The targets below keep the RV64 dynamic instruction count fixed at 52,547 and
 compare same-work cycles at the same hypothetical clock frequency. They do
 not account for a difference in achievable Fmax.
 
-| Target | Maximum RV cycles | Required RV IPC | Speed over HPI | Cycle reduction from current 3P |
-| --- | ---: | ---: | ---: | ---: |
-| Match HPI cycles | 72,146 | 0.728 | 1.00x | 61.16% |
-| Recover 0.9 IPC | 58,386 | 0.900 | 1.24x | 68.57% |
-| Clear win | 48,097 | 1.093 | 1.50x | 74.11% |
-| Beat it by far | 36,073 | 1.457 | 2.00x | 80.58% |
+| Target           | Maximum RV cycles | Required RV IPC | Speed over HPI | Cycle reduction from current 3P |
+|------------------|------------------:|----------------:|---------------:|--------------------------------:|
+| Match HPI cycles |            72,146 |           0.728 |          1.00x |                          61.16% |
+| Recover 0.9 IPC  |            58,386 |           0.900 |          1.24x |                          68.57% |
+| Clear win        |            48,097 |           1.093 |          1.50x |                          74.11% |
+| Beat it by far   |            36,073 |           1.457 |          2.00x |                          80.58% |
 
 Recovering 0.9 IPC would already beat this HPI result by 23.6% in same-clock
 cycle count because the RV64 binary executes fewer instructions. The 2x-HPI

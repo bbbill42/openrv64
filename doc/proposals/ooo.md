@@ -56,11 +56,11 @@ integration/core shell
 
 Each backend owns the structures that define its scheduling model:
 
-| Backend | Dependency model | Scheduling | Register mapping | Memory path |
-| --- | --- | --- | --- | --- |
-| 1P | Scalar scoreboard | In order | Identity | Existing scalar pipeline |
-| 3P | Architectural ownership and forwarding | Strict prefix, with separate experimental window | Identity | Shared `exec_lsu` containing `lsq` |
-| OOO | Physical tags and readiness | Oldest-ready issue queue | RAT/RRAT | Shared LSQ contract with OOO admission/recovery |
+| Backend | Dependency model                       | Scheduling                                       | Register mapping | Memory path                                     |
+|---------|----------------------------------------|--------------------------------------------------|------------------|-------------------------------------------------|
+| 1P      | Scalar scoreboard                      | In order                                         | Identity         | Existing scalar pipeline                        |
+| 3P      | Architectural ownership and forwarding | Strict prefix, with separate experimental window | Identity         | Shared `exec_lsu` containing `lsq`              |
+| OOO     | Physical tags and readiness            | Oldest-ready issue queue                         | RAT/RRAT         | Shared LSQ contract with OOO admission/recovery |
 
 Configuration-specific modules are intentional. `dispatch_1p`,
 `dispatch_3p`, and the legacy `exec_pipe_mem` remain valid implementations.
@@ -165,19 +165,19 @@ long-term boundary should align with the intent of
 
 The proposed starting point is moderate and deliberately parameterized:
 
-| Structure | Initial value | Intended sweep |
-| --- | ---: | ---: |
-| Fetch/decode/rename width | 3 | fixed initially |
-| Maximum issue width | 3 | 2-3 |
-| Maximum writeback width | 3 | 2-3 |
-| Maximum retirement width | 3 | fixed initially |
-| ROB entries | 24 | 16/24/32 |
-| Writable integer physical registers | TBD | selected with RAT/RRAT design |
-| Integer/control IQ entries | 16 | 12/16/24 |
-| Load queue entries | 8 | 4/8/12 |
-| Store queue entries | 8 | 4/8/12 |
-| Branch checkpoints | 8 | 4/8/16 |
-| Initial external data transactions | 3 | follows memory endpoint |
+| Structure                           | Initial value |                Intended sweep |
+|-------------------------------------|--------------:|------------------------------:|
+| Fetch/decode/rename width           |             3 |               fixed initially |
+| Maximum issue width                 |             3 |                           2-3 |
+| Maximum writeback width             |             3 |                           2-3 |
+| Maximum retirement width            |             3 |               fixed initially |
+| ROB entries                         |            24 |                      16/24/32 |
+| Writable integer physical registers |           TBD | selected with RAT/RRAT design |
+| Integer/control IQ entries          |            16 |                      12/16/24 |
+| Load queue entries                  |             8 |                        4/8/12 |
+| Store queue entries                 |             8 |                        4/8/12 |
+| Branch checkpoints                  |             8 |                        4/8/16 |
+| Initial external data transactions  |             3 |       follows memory endpoint |
 
 The PRF/ROB balance remains deliberately unsettled until RAT, RRAT, free-list,
 and recovery state are implemented together. A larger ROB is not presumed
@@ -188,12 +188,12 @@ ordering rules rather than capacity; see
 The target execution cluster has four independently backpressured sources but
 accepts and writes back at most three results per cycle:
 
-| Port | Operations |
-| --- | --- |
-| EX0 | Integer ALU, branch/jump, and initially system operations |
-| EX1 | Second integer ALU |
-| M | Independent multiply/divide worker |
-| LSU | Address generation, loads, stores, and ordered atomics |
+| Port | Operations                                                |
+|------|-----------------------------------------------------------|
+| EX0  | Integer ALU, branch/jump, and initially system operations |
+| EX1  | Second integer ALU                                        |
+| M    | Independent multiply/divide worker                        |
+| LSU  | Address generation, loads, stores, and ordered atomics    |
 
 The first executable milestone may reuse the current EX0/EX1/MEM cluster.
 Separating M from EX1 is part of the target structure so a long divide does not
@@ -221,11 +221,11 @@ openrv64_int_regfile
 
 The same storage contract serves each core differently:
 
-| Core | Registers | Read ports | Write ports | Mapping | Write point |
-| --- | ---: | ---: | ---: | --- | --- |
-| 1P | 32 | 2 | 1 | `physical = architectural` | WB/retirement |
-| 3P | 31 writable plus p0 | 6 | 3 | `physical = architectural` | Retirement |
-| OOO | Parameterized, TBD | 6 | 3 | `physical = RAT[architectural]` | Validated completion |
+| Core |           Registers | Read ports | Write ports | Mapping                         | Write point          |
+|------|--------------------:|-----------:|------------:|---------------------------------|----------------------|
+| 1P   |                  32 |          2 |           1 | `physical = architectural`      | WB/retirement        |
+| 3P   | 31 writable plus p0 |          6 |           3 | `physical = architectural`      | Retirement           |
+| OOO  |  Parameterized, TBD |          6 |           3 | `physical = RAT[architectural]` | Validated completion |
 
 The current `rv64-i-gpr_3p.v` is already close to the unbanked 6R/3W storage
 case.  Its ordered duplicate-write behavior remains useful for 3P retirement.

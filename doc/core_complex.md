@@ -76,15 +76,15 @@ and home operation. Width conversion occurs only below L2.
 The L2 does not contain AXI or WISHBONE state. Its southbound neutral request
 carries:
 
-| Field | Meaning |
-| --- | --- |
-| `valid/ready` | One accepted external beat. |
-| `write` | Read or write selection. |
-| `addr` | Physical byte address. |
-| `size` | Base-two logarithm of transfer bytes. |
-| `burst` | Read-only AXI-LEN-style count: zero is this request only; `N` declares this request plus the next `N` contiguous peer requests. |
-| `wdata/wstrb` | Producer-width data and per-byte enables, already lane-positioned. |
-| `cacheable` | Transport hint; line traffic is cacheable and bypass traffic is not. |
+| Field         | Meaning                                                                                                                         |
+|---------------|---------------------------------------------------------------------------------------------------------------------------------|
+| `valid/ready` | One accepted external beat.                                                                                                     |
+| `write`       | Read or write selection.                                                                                                        |
+| `addr`        | Physical byte address.                                                                                                          |
+| `size`        | Base-two logarithm of transfer bytes.                                                                                           |
+| `burst`       | Read-only AXI-LEN-style count: zero is this request only; `N` declares this request plus the next `N` contiguous peer requests. |
+| `wdata/wstrb` | Producer-width data and per-byte enables, already lane-positioned.                                                              |
+| `cacheable`   | Transport hint; line traffic is cacheable and bypass traffic is not.                                                            |
 
 The response carries producer-width read data and an error bit.
 `rtl/bus/genbus_interface.v` is the shared boundary used here and by the

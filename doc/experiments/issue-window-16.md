@@ -12,19 +12,19 @@ provide the age tags for branch recovery.
 
 The checksum-running CoreMark-derived comparison is:
 
-| Machine/configuration | ISA instructions | Cycles | IPC | Delta from matched non-spec window |
-| --- | ---: | ---: | ---: | ---: |
-| OpenRV64 1P, 256x3 gshare/BTB/RAS8 | 52,547 | 131,251 | 0.4004 | not the same backend |
-| 3P strict-prefix, 256x3, full forwarding | 52,547 | 80,449 | 0.6532 | -12,137 (-13.11%) |
-| 3P issue window, retirement-held correction | 52,547 | 92,586 | 0.5675 | reference |
-| **3P merged 16-entry speculation window** | **52,547** | **79,313** | **0.6625** | **-13,273 (-14.34%)** |
-| **Merged window + early direct JAL** | **52,547** | **78,838** | **0.6665** | **-13,748 (-14.85%)** |
-| Repeat-last (RTL type 3) + released conditional control | 52,547 | 96,357 | 0.5453 | +3,771 (+4.07%) |
-| **32x3 bimodal (RTL type 5) + serialized conditional control** | **52,547** | **74,113** | **0.7090** | **-18,473 (-19.95%)** |
-| BP6 merged window + released conditional control | 52,547 | 71,078 | 0.7393 | -21,508 (-23.23%) |
-| 3P strict-prefix, direction/target oracle, full forwarding | 52,547 | 73,934 | 0.7107 | -18,652 (-20.15%) |
-| **3P merged window, direction/target oracle** | **52,547** | **71,123** | **0.7388** | **-21,463 (-23.18%)** |
-| gem5 HPI A53-class proxy | 58,695 | 72,146 | 0.8136 | cross-ISA reference |
+| Machine/configuration                                          | ISA instructions |     Cycles |        IPC | Delta from matched non-spec window |
+|----------------------------------------------------------------|-----------------:|-----------:|-----------:|-----------------------------------:|
+| OpenRV64 1P, 256x3 gshare/BTB/RAS8                             |           52,547 |    131,251 |     0.4004 |               not the same backend |
+| 3P strict-prefix, 256x3, full forwarding                       |           52,547 |     80,449 |     0.6532 |                  -12,137 (-13.11%) |
+| 3P issue window, retirement-held correction                    |           52,547 |     92,586 |     0.5675 |                          reference |
+| **3P merged 16-entry speculation window**                      |       **52,547** | **79,313** | **0.6625** |              **-13,273 (-14.34%)** |
+| **Merged window + early direct JAL**                           |       **52,547** | **78,838** | **0.6665** |              **-13,748 (-14.85%)** |
+| Repeat-last (RTL type 3) + released conditional control        |           52,547 |     96,357 |     0.5453 |                    +3,771 (+4.07%) |
+| **32x3 bimodal (RTL type 5) + serialized conditional control** |       **52,547** | **74,113** | **0.7090** |              **-18,473 (-19.95%)** |
+| BP6 merged window + released conditional control               |           52,547 |     71,078 |     0.7393 |                  -21,508 (-23.23%) |
+| 3P strict-prefix, direction/target oracle, full forwarding     |           52,547 |     73,934 |     0.7107 |                  -18,652 (-20.15%) |
+| **3P merged window, direction/target oracle**                  |       **52,547** | **71,123** | **0.7388** |              **-21,463 (-23.18%)** |
+| gem5 HPI A53-class proxy                                       |           58,695 |     72,146 |     0.8136 |                cross-ISA reference |
 
 Except for the explicitly labeled repeat-last and 32x3 rows, the non-oracle 3P
 speculation-window rows use the same 256-entry, three-bit gshare predictor,
@@ -200,13 +200,13 @@ The replay projection below has now been tested against a selectable RTL
 implementation.  The first conservative implementation is checksum-correct,
 but it does **not** reproduce the projected speedup:
 
-| Model/configuration | ISA instructions | Cycles | IPC | Versus measured 3P |
-| --- | ---: | ---: | ---: | ---: |
-| OpenRV64 1P, BTFNT + RAS8 | 52,547 | 131,801 | 0.3987 | +46,850 |
-| Measured aggressive-hazard 3P | 52,547 | 84,951 | 0.6186 | reference |
-| **16-entry issue-window RTL** | **52,547** | **99,891** | **0.5260** | **+14,940 (+17.59%)** |
-| Falsified pre-RTL replay (historical only) | 52,547 | 68,332 | 0.7690 | not comparable |
-| gem5 HPI A53-class reference | 58,695 | 72,146 | 0.8136 | -12,805 |
+| Model/configuration                        | ISA instructions |     Cycles |        IPC |    Versus measured 3P |
+|--------------------------------------------|-----------------:|-----------:|-----------:|----------------------:|
+| OpenRV64 1P, BTFNT + RAS8                  |           52,547 |    131,801 |     0.3987 |               +46,850 |
+| Measured aggressive-hazard 3P              |           52,547 |     84,951 |     0.6186 |             reference |
+| **16-entry issue-window RTL**              |       **52,547** | **99,891** | **0.5260** | **+14,940 (+17.59%)** |
+| Falsified pre-RTL replay (historical only) |           52,547 |     68,332 |     0.7690 |        not comparable |
+| gem5 HPI A53-class reference               |           58,695 |     72,146 |     0.8136 |               -12,805 |
 
 The RTL run used BTFNT, RAS8, full forwarding, relaxed WAW, aggressive
 producer-tagged hazards, posted stores, a 16-entry retirement queue, the
@@ -231,15 +231,15 @@ escape.  Those are not small modeling details on this parser.
 The cycle trace now records issue-window aggregates separately from the legacy
 strict-prefix candidate fields:
 
-| Window observation | Cycles | Share |
-| --- | ---: | ---: |
-| At least one unissued entry resident | 80,506 | 80.59% |
-| All 16 entries occupied | 7,656 | 7.66% |
-| Unissued entries but no eligible entry | 36,007 | 36.05% |
-| At least one true producer wait | 71,716 | 71.79% |
+| Window observation                       | Cycles |  Share |
+|------------------------------------------|-------:|-------:|
+| At least one unissued entry resident     | 80,506 | 80.59% |
+| All 16 entries occupied                  |  7,656 |  7.66% |
+| Unissued entries but no eligible entry   | 36,007 | 36.05% |
+| At least one true producer wait          | 71,716 | 71.79% |
 | At least one hard-control ordering block | 63,364 | 63.43% |
-| At least one memory-order/control block | 52,349 | 52.41% |
-| Retirement head incomplete | 49,164 | 49.22% |
+| At least one memory-order/control block  | 52,349 | 52.41% |
+| Retirement head incomplete               | 49,164 | 49.22% |
 
 The counts overlap.  Average window state is more revealing than capacity:
 6.940 unissued entries are resident, 3.067 have ready operands, only 0.616 are
@@ -308,11 +308,11 @@ model, the cycle and IPC columns below are **not hardware bounds or performance
 predictions**.  Only differences between rows under the same failed model are
 reported for diagnostic use.
 
-| Sixteen-entry replay mode | Replay cycles | Replay IPC | Internal delta |
-| --- | ---: | ---: | ---: |
-| Ordinary oracle-fed branches | 61,424 | 0.8555 | reference |
-| **Conditional branches perfect and free** | **60,648** | **0.8664** | **-776** |
-| Conditional branches plus JAL/JALR perfect and free | 60,646 | 0.8665 | -778 |
+| Sixteen-entry replay mode                           | Replay cycles | Replay IPC | Internal delta |
+|-----------------------------------------------------|--------------:|-----------:|---------------:|
+| Ordinary oracle-fed branches                        |        61,424 |     0.8555 |      reference |
+| **Conditional branches perfect and free**           |    **60,648** | **0.8664** |       **-776** |
+| Conditional branches plus JAL/JALR perfect and free |        60,646 |     0.8665 |           -778 |
 
 The model eliminated execution cost for 10,784 conditional branches.  Making
 the 1,907 JAL/JALR instructions free as well saved only two more cycles.  Within
@@ -377,13 +377,13 @@ The following table records the estimate made before the issue window existed
 in RTL.  The checksum-valid RTL result above later falsified its absolute cycle
 and IPC prediction.  These rows must not be used as current comparisons:
 
-| Model/configuration | Cycles | IPC | Versus measured 3P |
-| --- | ---: | ---: | ---: |
-| Measured aggressive-hazard 3P | 84,951 | 0.6186 | reference |
-| Issue-around-head selection only | 82,742 | 0.6351 | -2,209 (-2.60%) |
-| 16 decoded entries, still strict-prefix issue | 70,541 | 0.7449 | -14,410 (-16.96%) |
-| **Falsified barely-viable-hazard + window replay** | **68,332** | **0.7690** | **historical model output** |
-| gem5 HPI A53-class reference | 72,146 | 0.813559 | not comparable to failed replay |
+| Model/configuration                                |     Cycles |        IPC |              Versus measured 3P |
+|----------------------------------------------------|-----------:|-----------:|--------------------------------:|
+| Measured aggressive-hazard 3P                      |     84,951 |     0.6186 |                       reference |
+| Issue-around-head selection only                   |     82,742 |     0.6351 |                 -2,209 (-2.60%) |
+| 16 decoded entries, still strict-prefix issue      |     70,541 |     0.7449 |               -14,410 (-16.96%) |
+| **Falsified barely-viable-hazard + window replay** | **68,332** | **0.7690** |     **historical model output** |
+| gem5 HPI A53-class reference                       |     72,146 |   0.813559 | not comparable to failed replay |
 
 The 68,332-cycle result is not merely unproven: the implemented window ran in
 99,891 cycles at 0.5260 IPC.  The replay deleted frontend backpressure that the
@@ -495,10 +495,10 @@ defensible interpretation is historical and model-internal:
 ## Failed-model window-size sensitivity
 
 | Capacity | Projected cycles | Projected IPC | Cycle saving |
-| --- | ---: | ---: | ---: |
-| 8 | 73,765 | 0.7124 | 11,186 |
-| **16** | **68,332** | **0.7690** | **16,619** |
-| 32 | 68,284 | 0.7695 | 16,667 |
+|----------|-----------------:|--------------:|-------------:|
+| 8        |           73,765 |        0.7124 |       11,186 |
+| **16**   |       **68,332** |    **0.7690** |   **16,619** |
+| 32       |           68,284 |        0.7695 |       16,667 |
 
 Sixteen entries are effectively saturated inside this replay: thirty-two
 entries change its output by only another 48 cycles.  These are not RTL cycle

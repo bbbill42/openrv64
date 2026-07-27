@@ -6,12 +6,12 @@ Doubling the three-pipe retirement queue from eight to sixteen entries produces
 no CoreMark performance improvement.  This is true both with the original
 same-pipe forwarding and with all three live completion bypasses enabled.
 
-| Completion forwarding | Retirement depth | Cycles | IPC | Maximum occupancy | Capacity blocks |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| Same-pipe only | 8 | 103,978 | 0.5054 | 6 | 0 |
-| Same-pipe only | 16 | 103,978 | 0.5054 | 6 | 0 |
-| All live ports | 8 | 95,192 | 0.5520 | 7 | 16 |
-| All live ports | 16 | 95,192 | 0.5520 | 7 | 0 |
+| Completion forwarding | Retirement depth |  Cycles |    IPC | Maximum occupancy | Capacity blocks |
+|-----------------------|-----------------:|--------:|-------:|------------------:|----------------:|
+| Same-pipe only        |                8 | 103,978 | 0.5054 |                 6 |               0 |
+| Same-pipe only        |               16 | 103,978 | 0.5054 |                 6 |               0 |
+| All live ports        |                8 |  95,192 | 0.5520 |                 7 |              16 |
+| All live ports        |               16 |  95,192 | 0.5520 |                 7 |               0 |
 
 Every run retires 52,547 instructions, halts normally, and returns
 `a0=0x000000000a277880`.  BTFNT plus the eight-entry RAS remains fixed at
@@ -42,9 +42,9 @@ dispatch head.
 CoreMark never creates the required occupancy:
 
 | Configuration | Occupancy 0-5 cycles | Occupancy 6 cycles | Occupancy 7 cycles | Occupancy 8-16 cycles |
-| --- | ---: | ---: | ---: | ---: |
-| Same-pipe | 103,970 | 8 | 0 | 0 |
-| All-live | 95,168 | 8 | 16 | 0 |
+|---------------|---------------------:|-------------------:|-------------------:|----------------------:|
+| Same-pipe     |              103,970 |                  8 |                  0 |                     0 |
+| All-live      |               95,168 |                  8 |                 16 |                     0 |
 
 Consequently, an eight-entry queue is not the active window limit.  Current
 dependency handling, strict-prefix issue, serialization, and physical-pipe

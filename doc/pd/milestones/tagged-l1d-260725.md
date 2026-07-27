@@ -4,10 +4,10 @@
 
 This report compares three Sky130/Yosys snapshots:
 
-| Snapshot | Started | Finished | Command | Meaning |
-|---|---|---|---|---|
-| `pre-microtlb` | 2026-07-23 | 2026-07-23 | `make yosys-resources-core-sky130` | Frozen pre-microTLB reference |
-| `post-microtlb` | 2026-07-25 | 2026-07-25 | `RESOURCE_JOBS=1 make yosys-resources-core-sky130` | Frozen state before the global-tag L1D rewrite |
+| Snapshot            | Started             | Finished            | Command                                                                                                                                                    | Meaning                                                            |
+|---------------------|---------------------|---------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------|
+| `pre-microtlb`      | 2026-07-23          | 2026-07-23          | `make yosys-resources-core-sky130`                                                                                                                         | Frozen pre-microTLB reference                                      |
+| `post-microtlb`     | 2026-07-25          | 2026-07-25          | `RESOURCE_JOBS=1 make yosys-resources-core-sky130`                                                                                                         | Frozen state before the global-tag L1D rewrite                     |
 | `tagged-l1d-260725` | 2026-07-25 22:40:26 | 2026-07-25 23:52:08 | `RESOURCE_JOBS=32 SOURCE_ROOT=/tmp/openrv64-tagged-l1d-final2.XWpSr3 make yosys-resources-core-sky130 YOSYS_CORE_RESOURCE_DIR=sim/yosys/tagged-l1d-260725` | Global 3-bit request tags and synchronous tag-indexed overlay SRAM |
 
 The first two rows are frozen under `sim/yosys/baselines/`. The final output
@@ -48,12 +48,12 @@ the Git commit at capture was
 
 ## Frozen baseline
 
-| Metric | `pre-microtlb` | `post-microtlb` | Change |
-|---|---:|---:|---:|
-| Mapped standard-cell logic | 5.420559 mm² | 7.377359 mm² | +1.956800 mm² (+36.10%) |
-| Sequential cell area | 2.260897 mm² | 2.799187 mm² | +0.538290 mm² (+23.81%) |
-| L1D control/tags | 1.301794 mm² | 2.941520 mm² | +1.639726 mm² (+125.96%) |
-| Inferred cache SRAM | 32 KiB | 32 KiB | unchanged |
+| Metric                     | `pre-microtlb` | `post-microtlb` |                   Change |
+|----------------------------|---------------:|----------------:|-------------------------:|
+| Mapped standard-cell logic |   5.420559 mm² |    7.377359 mm² |  +1.956800 mm² (+36.10%) |
+| Sequential cell area       |   2.260897 mm² |    2.799187 mm² |  +0.538290 mm² (+23.81%) |
+| L1D control/tags           |   1.301794 mm² |    2.941520 mm² | +1.639726 mm² (+125.96%) |
+| Inferred cache SRAM        |         32 KiB |          32 KiB |                unchanged |
 
 The L1D accounted for 83.80% of the total mapped-logic growth between those
 snapshots.
@@ -100,16 +100,16 @@ the correct final cacheline after later stores.
 
 The following passed on the tagged-L1D RTL:
 
-| Command | Result |
-|---|---|
-| `make -B sim-l1d-demand-mshr` | PASS |
-| `make -B sim-l1d-store-order` | PASS |
-| `make -B sim-l1d-store-buffer` | PASS |
-| `make -B sim-l1d-prefetch` | PASS |
-| `make -B sim-l1-cache` | PASS |
-| `make -B sim-lsq` | PASS |
-| `make -B sim-ccx-bus` | PASS, including native CCX L1I |
-| `git diff --check` | PASS |
+| Command                        | Result                         |
+|--------------------------------|--------------------------------|
+| `make -B sim-l1d-demand-mshr`  | PASS                           |
+| `make -B sim-l1d-store-order`  | PASS                           |
+| `make -B sim-l1d-store-buffer` | PASS                           |
+| `make -B sim-l1d-prefetch`     | PASS                           |
+| `make -B sim-l1-cache`         | PASS                           |
+| `make -B sim-lsq`              | PASS                           |
+| `make -B sim-ccx-bus`          | PASS, including native CCX L1I |
+| `git diff --check`             | PASS                           |
 
 The store-buffer regression specifically covers a posted store immediately
 followed by a resident load and checks the forwarded value and both completion
@@ -131,16 +131,16 @@ been remeasured.
 
 ### Direct result
 
-| Metric | `post-microtlb` | `tagged-l1d-260725` | Change |
-|---|---:|---:|---:|
-| Mapped standard-cell logic | 7.377359 mm² | 7.123870 mm² | -0.253489 mm² (-3.44%) |
-| Sequential cell area | 2.799187 mm² | 2.598475 mm² | -0.200712 mm² (-7.17%) |
-| L1D control/tags | 2.941520 mm² | 2.415963 mm² | -0.525557 mm² (-17.87%) |
-| L1D sequential cell area | 1.187503 mm² | 0.842902 mm² | -0.344600 mm² (-29.02%) |
-| L1D mapped cells | 360,401 | 304,671 | -55,730 (-15.46%) |
-| L1D share of mapped logic | 39.87% | 33.91% | -5.96 percentage points |
-| Inferred cache SRAM | 32 KiB | 32 KiB | unchanged |
-| Request-overlay inferred RAM | none | 4,608 bits | +4,608 bits |
+| Metric                       | `post-microtlb` | `tagged-l1d-260725` |                  Change |
+|------------------------------|----------------:|--------------------:|------------------------:|
+| Mapped standard-cell logic   |    7.377359 mm² |        7.123870 mm² |  -0.253489 mm² (-3.44%) |
+| Sequential cell area         |    2.799187 mm² |        2.598475 mm² |  -0.200712 mm² (-7.17%) |
+| L1D control/tags             |    2.941520 mm² |        2.415963 mm² | -0.525557 mm² (-17.87%) |
+| L1D sequential cell area     |    1.187503 mm² |        0.842902 mm² | -0.344600 mm² (-29.02%) |
+| L1D mapped cells             |         360,401 |             304,671 |       -55,730 (-15.46%) |
+| L1D share of mapped logic    |          39.87% |              33.91% | -5.96 percentage points |
+| Inferred cache SRAM          |          32 KiB |              32 KiB |               unchanged |
+| Request-overlay inferred RAM |            none |          4,608 bits |             +4,608 bits |
 
 The retained L1D module shrank by 0.525557 mm², 17.87%. That is the useful
 result for the rewrite. The saving includes removed flip-flops and associated
@@ -153,26 +153,26 @@ number is an observed snapshot delta, not a causal estimate of the tag rewrite.
 
 ### Per-block snapshot delta
 
-| Block | `post-microtlb` | `tagged-l1d-260725` | Area delta | Percent delta | Final share |
-|---|---:|---:|---:|---:|---:|
-| L1D control/tags | 2.941520 mm² | 2.415963 mm² | -0.525557 mm² | -17.87% | 33.91% |
-| L1I control/tags | 1.114388 mm² | 1.380386 mm² | +0.265999 mm² | +23.87% | 19.38% |
-| Backend control/forwarding | 0.655281 mm² | 0.660816 mm² | +0.005535 mm² | +0.84% | 9.28% |
-| Retirement | 0.634960 mm² | 0.634960 mm² | unchanged | 0.00% | 8.91% |
-| I/D TLBs | 0.323259 mm² | 0.323259 mm² | unchanged | 0.00% | 4.54% |
-| Dispatch/hazards | 0.299771 mm² | 0.299771 mm² | unchanged | 0.00% | 4.21% |
-| Page-table walker | 0.294914 mm² | 0.294914 mm² | unchanged | 0.00% | 4.14% |
-| CSR/PMP | 0.292752 mm² | 0.293787 mm² | +0.001035 mm² | +0.35% | 4.12% |
-| Integer register file | 0.232785 mm² | 0.232785 mm² | unchanged | 0.00% | 3.27% |
-| Fetch/line buffers | 0.182037 mm² | 0.182037 mm² | unchanged | 0.00% | 2.56% |
-| Memory-system routing/AXI | 0.142303 mm² | 0.141725 mm² | -0.000578 mm² | -0.41% | 1.99% |
-| EX0 integer/M | 0.109372 mm² | 0.109372 mm² | unchanged | 0.00% | 1.54% |
-| EX1 integer/branch | 0.052747 mm² | 0.052747 mm² | unchanged | 0.00% | 0.74% |
-| Branch predictor | 0.043559 mm² | 0.043559 mm² | unchanged | 0.00% | 0.61% |
-| Shared L2 TLB | 0.029876 mm² | 0.029876 mm² | unchanged | 0.00% | 0.42% |
-| Frontend/core control | 0.018833 mm² | 0.018909 mm² | +0.000076 mm² | +0.41% | 0.27% |
-| Decode | 0.005413 mm² | 0.005413 mm² | unchanged | 0.00% | 0.08% |
-| Trap/redirect vector | 0.003590 mm² | 0.003590 mm² | unchanged | 0.00% | 0.05% |
+| Block                      | `post-microtlb` | `tagged-l1d-260725` |    Area delta | Percent delta | Final share |
+|----------------------------|----------------:|--------------------:|--------------:|--------------:|------------:|
+| L1D control/tags           |    2.941520 mm² |        2.415963 mm² | -0.525557 mm² |       -17.87% |      33.91% |
+| L1I control/tags           |    1.114388 mm² |        1.380386 mm² | +0.265999 mm² |       +23.87% |      19.38% |
+| Backend control/forwarding |    0.655281 mm² |        0.660816 mm² | +0.005535 mm² |        +0.84% |       9.28% |
+| Retirement                 |    0.634960 mm² |        0.634960 mm² |     unchanged |         0.00% |       8.91% |
+| I/D TLBs                   |    0.323259 mm² |        0.323259 mm² |     unchanged |         0.00% |       4.54% |
+| Dispatch/hazards           |    0.299771 mm² |        0.299771 mm² |     unchanged |         0.00% |       4.21% |
+| Page-table walker          |    0.294914 mm² |        0.294914 mm² |     unchanged |         0.00% |       4.14% |
+| CSR/PMP                    |    0.292752 mm² |        0.293787 mm² | +0.001035 mm² |        +0.35% |       4.12% |
+| Integer register file      |    0.232785 mm² |        0.232785 mm² |     unchanged |         0.00% |       3.27% |
+| Fetch/line buffers         |    0.182037 mm² |        0.182037 mm² |     unchanged |         0.00% |       2.56% |
+| Memory-system routing/AXI  |    0.142303 mm² |        0.141725 mm² | -0.000578 mm² |        -0.41% |       1.99% |
+| EX0 integer/M              |    0.109372 mm² |        0.109372 mm² |     unchanged |         0.00% |       1.54% |
+| EX1 integer/branch         |    0.052747 mm² |        0.052747 mm² |     unchanged |         0.00% |       0.74% |
+| Branch predictor           |    0.043559 mm² |        0.043559 mm² |     unchanged |         0.00% |       0.61% |
+| Shared L2 TLB              |    0.029876 mm² |        0.029876 mm² |     unchanged |         0.00% |       0.42% |
+| Frontend/core control      |    0.018833 mm² |        0.018909 mm² | +0.000076 mm² |        +0.41% |       0.27% |
+| Decode                     |    0.005413 mm² |        0.005413 mm² |     unchanged |         0.00% |       0.08% |
+| Trap/redirect vector       |    0.003590 mm² |        0.003590 mm² |     unchanged |         0.00% |       0.05% |
 
 ## Synthesis runtime
 
@@ -193,11 +193,11 @@ internally or changing the mapper.
 
 The completed pre-ABC report contains exactly one `tag_overlay_mem_q`:
 
-| Memory | Shape | Ports | Clocked read | Bits | Reset |
-|---|---:|---:|---:|---:|---:|
-| L1D request overlay | 8x576 | 1R/1W | yes, `RD_CLK_ENABLE=1` | 4,608 | none |
-| L1D data arrays | 32 banks, 64x64 | 1R/1W | yes | 131,072 | none |
-| L1I data arrays | 4 banks, 64x512 | 1R/1W | yes | 131,072 | none |
+| Memory              |           Shape | Ports |           Clocked read |    Bits | Reset |
+|---------------------|----------------:|------:|-----------------------:|--------:|------:|
+| L1D request overlay |           8x576 | 1R/1W | yes, `RD_CLK_ENABLE=1` |   4,608 |  none |
+| L1D data arrays     | 32 banks, 64x64 | 1R/1W |                    yes | 131,072 |  none |
+| L1I data arrays     | 4 banks, 64x512 | 1R/1W |                    yes | 131,072 |  none |
 
 The overlay carries both `ram_style="block"` and
 `syn_ramstyle="block_ram"`. The summarizer rejects the run unless this group

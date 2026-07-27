@@ -30,40 +30,40 @@ one cycle. For example, selecting event bits 4, 5, and 6 counts retired
 instructions on a three-wide core rather than merely cycles with retirement.
 Unsupported upper selector bits read as zero.
 
-| Bit | Event |
-| --: | :---- |
-| 0 | Cycle |
-| 1-3 | Issue lanes 0-2 |
-| 4-6 | Retirement lanes 0-2 |
-| 7 | Zero-issue cycle |
-| 8 | Zero-retirement cycle |
-| 9 | Frontend empty |
-| 10 | Dispatch empty |
-| 11 | RAW stall |
-| 12 | Barrier stall |
-| 13 | Pipe-busy stall |
-| 14 | Redirect |
-| 15 | Redirect recovery |
-| 16 | Direction misprediction |
-| 17 | Target misprediction |
-| 18 | Fetch request |
-| 19 | Fetch response |
-| 20 | Fetch cancellation |
-| 21 | LSU request |
-| 22 | LSU response |
-| 23 | LSU request wait |
-| 24 | LSU outstanding cycle |
-| 25 | L1I demand hit |
-| 26 | L1I demand miss |
-| 27 | L1I prefetch launch |
-| 28 | Useful L1I prefetch |
-| 29 | L1I demand blocked by prefetch |
-| 30 | L1D load hit |
-| 31 | L1D load miss |
-| 32 | Store request accepted |
-| 33 | Retirement head incomplete |
-| 34 | Instruction completed behind retirement head |
-| 35-37 | Lost issue slots 0-2 |
+|   Bit | Event                                        |
+|------:|:---------------------------------------------|
+|     0 | Cycle                                        |
+|   1-3 | Issue lanes 0-2                              |
+|   4-6 | Retirement lanes 0-2                         |
+|     7 | Zero-issue cycle                             |
+|     8 | Zero-retirement cycle                        |
+|     9 | Frontend empty                               |
+|    10 | Dispatch empty                               |
+|    11 | RAW stall                                    |
+|    12 | Barrier stall                                |
+|    13 | Pipe-busy stall                              |
+|    14 | Redirect                                     |
+|    15 | Redirect recovery                            |
+|    16 | Direction misprediction                      |
+|    17 | Target misprediction                         |
+|    18 | Fetch request                                |
+|    19 | Fetch response                               |
+|    20 | Fetch cancellation                           |
+|    21 | LSU request                                  |
+|    22 | LSU response                                 |
+|    23 | LSU request wait                             |
+|    24 | LSU outstanding cycle                        |
+|    25 | L1I demand hit                               |
+|    26 | L1I demand miss                              |
+|    27 | L1I prefetch launch                          |
+|    28 | Useful L1I prefetch                          |
+|    29 | L1I demand blocked by prefetch               |
+|    30 | L1D load hit                                 |
+|    31 | L1D load miss                                |
+|    32 | Store request accepted                       |
+|    33 | Retirement head incomplete                   |
+|    34 | Instruction completed behind retirement head |
+| 35-37 | Lost issue slots 0-2                         |
 
 The encoding is shared with `openrv64_core_perf`; the macro definitions live
 in `rtl/core/cmu/defs.v`.

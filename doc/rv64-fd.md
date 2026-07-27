@@ -35,35 +35,35 @@ responsible for NaN boxing before writeback.
 
 ### Major encodings
 
-| Class | Opcode | Additional selector |
-| --- | --- | --- |
-| `FLW`, `FLD` | `0000111` (`LOAD-FP`) | `funct3=010`, `011` |
-| `FSW`, `FSD` | `0100111` (`STORE-FP`) | `funct3=010`, `011` |
-| `FMADD.S/D` | `1000011` | `fmt=00`, `01` |
-| `FMSUB.S/D` | `1000111` | `fmt=00`, `01` |
-| `FNMSUB.S/D` | `1001011` | `fmt=00`, `01` |
-| `FNMADD.S/D` | `1001111` | `fmt=00`, `01` |
-| Other FP operations | `1010011` (`OP-FP`) | `funct5`, `fmt`, `rs2`, and `funct3/rm` |
+| Class               | Opcode                 | Additional selector                     |
+|---------------------|------------------------|-----------------------------------------|
+| `FLW`, `FLD`        | `0000111` (`LOAD-FP`)  | `funct3=010`, `011`                     |
+| `FSW`, `FSD`        | `0100111` (`STORE-FP`) | `funct3=010`, `011`                     |
+| `FMADD.S/D`         | `1000011`              | `fmt=00`, `01`                          |
+| `FMSUB.S/D`         | `1000111`              | `fmt=00`, `01`                          |
+| `FNMSUB.S/D`        | `1001011`              | `fmt=00`, `01`                          |
+| `FNMADD.S/D`        | `1001111`              | `fmt=00`, `01`                          |
+| Other FP operations | `1010011` (`OP-FP`)    | `funct5`, `fmt`, `rs2`, and `funct3/rm` |
 
 For the R4 fused operations, bits 31:27 are `rs3`, bits 26:25 are `fmt`,
 and bits 14:12 are `rm`.  For OP-FP, bits 31:27 are `funct5` and bits
 26:25 are `fmt`.
 
-| OP-FP family | `funct5` | Secondary selection |
-| --- | --- | --- |
-| `FADD` | `00000` | `fmt` |
-| `FSUB` | `00001` | `fmt` |
-| `FMUL` | `00010` | `fmt` |
-| `FDIV` | `00011` | `fmt` |
-| `FSGNJ`, `FSGNJN`, `FSGNJX` | `00100` | `funct3=000/001/010` |
-| `FMIN`, `FMAX` | `00101` | `funct3=000/001` |
-| FP format conversion | `01000` | source format in `rs2` |
-| `FSQRT` | `01011` | `rs2=0` |
-| `FLE`, `FLT`, `FEQ` | `10100` | `funct3=000/001/010` |
-| FP-to-integer conversion | `11000` | W/WU/L/LU in `rs2` |
-| Integer-to-FP conversion | `11010` | W/WU/L/LU in `rs2` |
-| `FMV.X.W/D`, `FCLASS.S/D` | `11100` | `funct3=000/001`, `rs2=0` |
-| `FMV.W/D.X` | `11110` | `funct3=000`, `rs2=0` |
+| OP-FP family                | `funct5` | Secondary selection       |
+|-----------------------------|----------|---------------------------|
+| `FADD`                      | `00000`  | `fmt`                     |
+| `FSUB`                      | `00001`  | `fmt`                     |
+| `FMUL`                      | `00010`  | `fmt`                     |
+| `FDIV`                      | `00011`  | `fmt`                     |
+| `FSGNJ`, `FSGNJN`, `FSGNJX` | `00100`  | `funct3=000/001/010`      |
+| `FMIN`, `FMAX`              | `00101`  | `funct3=000/001`          |
+| FP format conversion        | `01000`  | source format in `rs2`    |
+| `FSQRT`                     | `01011`  | `rs2=0`                   |
+| `FLE`, `FLT`, `FEQ`         | `10100`  | `funct3=000/001/010`      |
+| FP-to-integer conversion    | `11000`  | W/WU/L/LU in `rs2`        |
+| Integer-to-FP conversion    | `11010`  | W/WU/L/LU in `rs2`        |
+| `FMV.X.W/D`, `FCLASS.S/D`   | `11100`  | `funct3=000/001`, `rs2=0` |
+| `FMV.W/D.X`                 | `11110`  | `funct3=000`, `rs2=0`     |
 
 This covers the F/D arithmetic, fused arithmetic, comparisons, classification,
 sign injection, minimum/maximum, integer conversions, S/D conversions, raw
@@ -91,12 +91,12 @@ variable-latency pipeline:
 
 Without contention, the observable timing is:
 
-| Result class | `result_valid_o` appears | Earliest output handshake |
-| --- | ---: | ---: |
-| Fast lane | after acceptance | 1 cycle |
-| `FMUL.S` | after 6 iteration cycles | 7 cycles |
-| `FSQRT.S` | after 7 iteration cycles | 8 cycles |
-| Final iterative stage | after 14 iteration cycles | 15 cycles |
+| Result class          |  `result_valid_o` appears | Earliest output handshake |
+|-----------------------|--------------------------:|--------------------------:|
+| Fast lane             |          after acceptance |                   1 cycle |
+| `FMUL.S`              |  after 6 iteration cycles |                  7 cycles |
+| `FSQRT.S`             |  after 7 iteration cycles |                  8 cycles |
+| Final iterative stage | after 14 iteration cycles |                 15 cycles |
 
 The distinction exists because ready/valid transfers occur on rising edges:
 the consumer observes a newly asserted `result_valid_o` during the cycle and
