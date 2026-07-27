@@ -189,15 +189,23 @@ scan_input(void)
     return mix;
 }
 
-void
-coremark_loop(void)
+uint32_t
+coremark_loop_with_sink(volatile uint32_t *sink)
 {
-    uint32_t accumulator = coremark_loop_sink;
+    uint32_t accumulator = *sink;
     unsigned int pass;
 
     for (pass = 0; pass < COREMARK_LOOP_PASSES; pass++) {
         accumulator ^= scan_input();
         accumulator = (accumulator << 7) | (accumulator >> 25);
-        coremark_loop_sink = accumulator;
+        *sink = accumulator;
     }
+
+    return accumulator;
+}
+
+void
+coremark_loop(void)
+{
+    (void)coremark_loop_with_sink(&coremark_loop_sink);
 }

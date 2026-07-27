@@ -168,6 +168,23 @@ $(CORE_3P_CCX_L2_VERILATOR_BUILD): tb/tb_top_3p_soc.v \
 		-o core_3p_ccx_l2_tb $(CORE_3P_AXI_SRCS) \
 		$(CORE_COMPLEX_SRCS) $(AXI_DDR3_SRCS) tb/tb_top_3p_soc.v
 
+$(CORE_4H_3P_VERILATOR_BUILD): tb/tb_4h_3p.sv \
+		$(CORE_3P_AXI_SRCS) rtl/complex/protocol/line_crossbar.v \
+		$(CCX_L2_SRCS) $(CCX_COHERENT_SRCS) \
+		$(ISA_SRCS) $(ARITH_DEPS) $(BP_DEPS)
+	mkdir -p $(CORE_4H_3P_VERILATOR_DIR)
+	$(VERILATOR) --binary --timing -Wall -Wno-fatal -j 32 \
+		--threads $(CORE_4H_3P_VERILATOR_THREADS) -Irtl \
+		-GL1D_PREFETCH_ENABLE=$(CORE_4H_3P_L1D_PREFETCH_ENABLE) \
+		-GSPEC_LOAD_BASE=64\'d$(CORE_4H_3P_SPEC_LOAD_BASE) \
+		-GSPEC_LOAD_SIZE=64\'d$(CORE_4H_3P_SPEC_LOAD_SIZE) \
+		--output-split 20000 --output-split-cfuncs 2000 \
+		--top-module tb_4h_3p \
+		--Mdir $(CORE_4H_3P_VERILATOR_DIR) \
+		-o core_4h_3p_tb $(CORE_3P_AXI_SRCS) \
+		rtl/complex/protocol/line_crossbar.v \
+		$(CCX_L2_SRCS) $(CCX_COHERENT_SRCS) tb/tb_4h_3p.sv
+
 $(TOP_AXI_3P_SIM_BUILD): tb/tb_top_axi_3p.sv rtl/openrv64_top_3p.v \
 	$(CORE_SRCS) $(ISA_SRCS) $(ARITH_DEPS) $(BP_DEPS) \
 	$(SOC_BUS_SRCS) $(ROM_SRCS) $(CLINT_SRCS) $(PLIC_SRCS) \

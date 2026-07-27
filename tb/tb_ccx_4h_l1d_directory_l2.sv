@@ -31,6 +31,9 @@ module tb_ccx_4h_l1d_directory_l2 #(
     localparam [63:0] LINE_A = MEMORY_BASE;
     localparam [63:0] LINE_B = MEMORY_BASE + 64'h0000_0040;
     localparam [63:0] LINE_C = MEMORY_BASE + 64'h0000_0080;
+    localparam integer PINGPONG_LINES = 16;
+    localparam [63:0] PINGPONG_BASE =
+        MEMORY_BASE + 64'h0000_1000;
     localparam [63:0] WRITE_A0 = 64'hc001_cafe_0000_0002;
     localparam [63:0] WRITE_A1 = 64'hc001_cafe_0000_0001;
 
@@ -207,6 +210,8 @@ module tb_ccx_4h_l1d_directory_l2 #(
     wire [NUM_HARTS-1:0] l1d_invalidate_valid;
     wire [NUM_HARTS-1:0] l1d_invalidate_ready;
     wire [NUM_HARTS*64-1:0] l1d_invalidate_addr;
+    wire [NUM_HARTS-1:0] clear_reservation;
+    wire probe_endpoint_protocol_error;
     logic [31:0] probe_accept_count [0:NUM_HARTS-1];
     logic [31:0] invalidate_count [0:NUM_HARTS-1];
     logic [31:0] invalidate_cycle [0:NUM_HARTS-1];
@@ -329,6 +334,15 @@ module tb_ccx_4h_l1d_directory_l2 #(
     integer atomic_sc_success_count;
     integer atomic_lr_command_count;
     integer atomic_sc_command_count;
+    integer standalone_lr_count;
+    integer pingpong_line;
+    integer pingpong_hart;
+    logic [63:0] pingpong_addr;
+    logic [63:0] pingpong_data [0:NUM_HARTS-1];
+    logic contention_monitor_active;
+    logic [63:0] contention_monitor_line;
+    integer contention_expected_hart;
+    integer contention_grant_count;
 
     function automatic [63:0] initial_memory_word;
         input [63:0] address;
@@ -418,13 +432,16 @@ module tb_ccx_4h_l1d_directory_l2 #(
             assign l1d_backend_state_debug[hart*2 +: 2] =
                 u_l1d.backend_state_q;
 
-            openrv64_exec_lsu_rv64a u_atomic_lsu (
+            openrv64_exec_lsu_rv64a #(
+                .SC_STATUS_IN_RDATA(1),
+                .COHERENT_RESERVATIONS(1)
+            ) u_atomic_lsu (
                 .clk(clk),
                 .rst_n(rst_n),
                 .flush_i(1'b0),
                 .valid_i(atomic_valid[hart]),
                 .consume_i(atomic_consume[hart]),
-                .clear_reservation_i(1'b0),
+                .clear_reservation_i(clear_reservation[hart]),
                 .op_sel_i(
                     atomic_op[
                         hart*`RV64_LSU_OP_WIDTH +:
@@ -483,6 +500,7 @@ module tb_ccx_4h_l1d_directory_l2 #(
                 .STORE_BUFFER_DRAIN_WATERMARK(2),
                 .STORE_BUFFER_TIMEOUT_CYCLES(16384),
                 .PREFETCH_ENABLE(0),
+                .COHERENT_ATOMICS(1),
                 .REQ_TAG_WIDTH(TAG_WIDTH),
                 .REQ_DEPTH(1 << TAG_WIDTH),
                 .HART_ID(`OPENRV64_CCX_HART_ID_WIDTH'(hart))
@@ -837,87 +855,53 @@ module tb_ccx_4h_l1d_directory_l2 #(
         .bus_resp_error_i(bus_resp_error)
     );
 
-    // Per-hart probe endpoint.  The response identity is captured when the
-    // probe is accepted, but the ACK remains suppressed until the real L1D
-    // invalidation port completes.
+    // Production four-hart probe termination.  Each endpoint owns independent
+    // request/response storage and clears the local LR reservation as soon as
+    // a D-cache invalidate is accepted.
+    openrv64_ccx_4h_l1d_probe_cluster #(
+        .PROBE_TIMEOUT_CYCLES(4096)
+    ) u_probe_cluster (
+        .clk_i(clk),
+        .rst_ni(rst_n),
+        .probe_valid_i(probe_valid),
+        .probe_ready_o(probe_ready),
+        .probe_id_i(probe_id),
+        .probe_command_i(probe_command),
+        .probe_cache_mask_i(probe_cache_mask),
+        .probe_line_addr_i(probe_line_addr),
+        .probe_resp_valid_o(probe_resp_valid),
+        .probe_resp_ready_i(probe_resp_ready),
+        .probe_resp_id_o(probe_resp_id),
+        .probe_resp_kind_o(probe_resp_kind),
+        .probe_resp_data_o(probe_resp_data),
+        .probe_resp_error_o(probe_resp_error),
+        .l1d_invalidate_valid_o(l1d_invalidate_valid),
+        .l1d_invalidate_ready_i(l1d_invalidate_ready),
+        .l1d_invalidate_addr_o(l1d_invalidate_addr),
+        .clear_reservation_o(clear_reservation),
+        .protocol_error_clear_i(1'b0),
+        .protocol_error_o(probe_endpoint_protocol_error)
+    );
+
+    // Probe accounting remains test-only observability.
     generate
         for (hart = 0; hart < NUM_HARTS; hart = hart + 1) begin : g_probe
-            logic invalidate_pending_q;
-            logic response_valid_q;
-            logic [`OPENRV64_CCX_PROBE_ID_WIDTH-1:0] response_id_q;
-            logic [63:0] invalidate_addr_q;
-            wire [`OPENRV64_CCX_PROBE_CACHE_WIDTH-1:0]
-                incoming_cache_mask =
-                    probe_cache_mask[
-                        hart*`OPENRV64_CCX_PROBE_CACHE_WIDTH +:
-                        `OPENRV64_CCX_PROBE_CACHE_WIDTH];
-            wire incoming_dcache =
-                |(incoming_cache_mask & `OPENRV64_CCX_PROBE_CACHE_D);
             wire probe_fire = probe_valid[hart] && probe_ready[hart];
             wire invalidate_fire =
-                invalidate_pending_q && l1d_invalidate_ready[hart];
-
-            assign probe_ready[hart] =
-                !invalidate_pending_q && !response_valid_q;
-            assign l1d_invalidate_valid[hart] = invalidate_pending_q;
-            assign l1d_invalidate_addr[hart*64 +: 64] =
-                invalidate_addr_q;
-            assign probe_resp_valid[hart] = response_valid_q;
-            assign probe_resp_id[
-                hart*`OPENRV64_CCX_PROBE_ID_WIDTH +:
-                `OPENRV64_CCX_PROBE_ID_WIDTH] = response_id_q;
-            assign probe_resp_kind[
-                hart*`OPENRV64_CCX_PROBE_RESP_WIDTH +:
-                `OPENRV64_CCX_PROBE_RESP_WIDTH] =
-                `OPENRV64_CCX_PROBE_RESP_ACK;
-            assign probe_resp_data[
-                hart*`OPENRV64_CCX_LINE_DATA_WIDTH +:
-                `OPENRV64_CCX_LINE_DATA_WIDTH] =
-                {`OPENRV64_CCX_LINE_DATA_WIDTH{1'b0}};
-            assign probe_resp_error[hart] = 1'b0;
+                l1d_invalidate_valid[hart] &&
+                l1d_invalidate_ready[hart];
 
             always @(posedge clk or negedge rst_n) begin
                 if (!rst_n) begin
-                    invalidate_pending_q <= 1'b0;
-                    response_valid_q <= 1'b0;
-                    response_id_q <=
-                        {`OPENRV64_CCX_PROBE_ID_WIDTH{1'b0}};
-                    invalidate_addr_q <= 64'd0;
                     probe_accept_count[hart] <= 32'd0;
                     invalidate_count[hart] <= 32'd0;
                     invalidate_cycle[hart] <= 32'd0;
                 end else begin
-                    if (response_valid_q && probe_resp_ready[hart])
-                        response_valid_q <= 1'b0;
-
-                    if (probe_fire) begin
-                        if (probe_command[
-                                hart*`OPENRV64_CCX_PROBE_CMD_WIDTH +:
-                                `OPENRV64_CCX_PROBE_CMD_WIDTH] !=
-                            `OPENRV64_CCX_PROBE_INV)
-                            $fatal(1,
-                                "hart %0d received unsupported data probe",
-                                hart);
-                        response_id_q <=
-                            probe_id[
-                                hart*`OPENRV64_CCX_PROBE_ID_WIDTH +:
-                                `OPENRV64_CCX_PROBE_ID_WIDTH];
-                        invalidate_addr_q <=
-                            probe_line_addr[hart*64 +: 64];
+                    if (probe_fire)
                         probe_accept_count[hart] <=
                             probe_accept_count[hart] + 1'b1;
-                        if (incoming_dcache) begin
-                            invalidate_pending_q <= 1'b1;
-                        end else begin
-                            // This bench has no L1I.  An I-only probe is an
-                            // immediate clean miss at this endpoint.
-                            response_valid_q <= 1'b1;
-                        end
-                    end
 
                     if (invalidate_fire) begin
-                        invalidate_pending_q <= 1'b0;
-                        response_valid_q <= 1'b1;
                         invalidate_count[hart] <=
                             invalidate_count[hart] + 1'b1;
                         invalidate_cycle[hart] <= cycle_count;
@@ -1410,18 +1394,17 @@ module tb_ccx_4h_l1d_directory_l2 #(
 
     task automatic drain_store_mask;
         input [NUM_HARTS-1:0] selected_harts;
-        integer selected_hart;
         begin
-            // A probe cannot currently preempt another demand/backend command
-            // at its target L1D.  Simultaneous store drains can therefore form
-            // a cycle through the serialized home.  Keep issue concurrent but
-            // drain each selected endpoint separately until the production
-            // probe queue removes that progress dependency.
-            for (selected_hart = 0;
-                 selected_hart < NUM_HARTS;
-                 selected_hart = selected_hart + 1)
-                if (selected_harts[selected_hart])
-                    drain_stores(selected_hart);
+            // Independent snoop resources permit every private store buffer
+            // to drain concurrently.  This is the adversarial configuration:
+            // each home write may invalidate a hart whose own write is
+            // already waiting for the same serialized home.
+            fork
+                if (selected_harts[0]) drain_stores(0);
+                if (selected_harts[1]) drain_stores(1);
+                if (selected_harts[2]) drain_stores(2);
+                if (selected_harts[3]) drain_stores(3);
+            join
         end
     endtask
 
@@ -1436,6 +1419,120 @@ module tb_ccx_4h_l1d_directory_l2 #(
                 issue_load(selected_hart,
                            planned_addr[selected_hart],
                            planned_expected[selected_hart]);
+        end
+    endtask
+
+    task automatic issue_lr_hold;
+        input integer selected_hart;
+        input [63:0] address;
+        input [63:0] expected;
+        logic [TAG_WIDTH-1:0] selected_tag;
+        integer task_wait_cycles;
+        begin
+            selected_tag =
+                next_lsu_tag[selected_hart*TAG_WIDTH +: TAG_WIDTH];
+            @(negedge clk);
+            atomic_select[selected_hart] = 1'b1;
+            atomic_valid[selected_hart] = 1'b1;
+            atomic_consume[selected_hart] = 1'b0;
+            atomic_op[
+                selected_hart*`RV64_LSU_OP_WIDTH +:
+                `RV64_LSU_OP_WIDTH] = `RV64_LSU_OP_LR;
+            atomic_size[
+                selected_hart*`RV64_LSU_SIZE_WIDTH +:
+                `RV64_LSU_SIZE_WIDTH] = `RV64_LSU_SIZE_DWORD;
+            atomic_addr[selected_hart*64 +: 64] = address;
+            atomic_operand[selected_hart*64 +: 64] = 64'd0;
+            atomic_tag[selected_hart*TAG_WIDTH +: TAG_WIDTH] =
+                selected_tag;
+
+            task_wait_cycles = 0;
+            while (!atomic_complete[selected_hart] &&
+                   (task_wait_cycles < 12000)) begin
+                @(negedge clk);
+                task_wait_cycles = task_wait_cycles + 1;
+            end
+            if (!atomic_complete[selected_hart])
+                $fatal(1, "hart %0d LR timeout", selected_hart);
+            if (atomic_illegal[selected_hart] ||
+                atomic_misaligned[selected_hart] ||
+                atomic_access_fault[selected_hart] ||
+                atomic_page_fault[selected_hart] ||
+                (atomic_result[selected_hart*64 +: 64] !== expected))
+                $fatal(1,
+                    "hart %0d LR failed result=%016x expected=%016x",
+                    selected_hart,
+                    atomic_result[selected_hart*64 +: 64], expected);
+
+            atomic_consume[selected_hart] = 1'b1;
+            @(posedge clk);
+            @(negedge clk);
+            atomic_consume[selected_hart] = 1'b0;
+            atomic_valid[selected_hart] = 1'b0;
+            atomic_select[selected_hart] = 1'b0;
+            atomic_op[
+                selected_hart*`RV64_LSU_OP_WIDTH +:
+                `RV64_LSU_OP_WIDTH] = `RV64_LSU_OP_INVALID;
+            atomic_addr[selected_hart*64 +: 64] = 64'd0;
+            next_lsu_tag[selected_hart*TAG_WIDTH +: TAG_WIDTH] =
+                selected_tag + 1'b1;
+        end
+    endtask
+
+    task automatic issue_sc_expect_fail;
+        input integer selected_hart;
+        input [63:0] address;
+        input [63:0] data;
+        integer task_wait_cycles;
+        integer sc_commands_before;
+        begin
+            sc_commands_before = atomic_sc_command_count;
+            @(negedge clk);
+            atomic_select[selected_hart] = 1'b1;
+            atomic_valid[selected_hart] = 1'b1;
+            atomic_consume[selected_hart] = 1'b0;
+            atomic_op[
+                selected_hart*`RV64_LSU_OP_WIDTH +:
+                `RV64_LSU_OP_WIDTH] = `RV64_LSU_OP_SC;
+            atomic_size[
+                selected_hart*`RV64_LSU_SIZE_WIDTH +:
+                `RV64_LSU_SIZE_WIDTH] = `RV64_LSU_SIZE_DWORD;
+            atomic_addr[selected_hart*64 +: 64] = address;
+            atomic_operand[selected_hart*64 +: 64] = data;
+
+            task_wait_cycles = 0;
+            while (!atomic_complete[selected_hart] &&
+                   (task_wait_cycles < 12000)) begin
+                @(negedge clk);
+                task_wait_cycles = task_wait_cycles + 1;
+            end
+            if (!atomic_complete[selected_hart])
+                $fatal(1, "hart %0d failed-SC timeout", selected_hart);
+            if (atomic_illegal[selected_hart] ||
+                atomic_misaligned[selected_hart] ||
+                atomic_access_fault[selected_hart] ||
+                atomic_page_fault[selected_hart] ||
+                (atomic_result[selected_hart*64 +: 64] !== 64'd1))
+                $fatal(1,
+                    "hart %0d SC did not report reservation loss result=%016x",
+                    selected_hart,
+                    atomic_result[selected_hart*64 +: 64]);
+            if (atomic_sc_command_count != sc_commands_before)
+                $fatal(1,
+                    "hart %0d sent SC after invalidate cleared reservation",
+                    selected_hart);
+
+            atomic_consume[selected_hart] = 1'b1;
+            @(posedge clk);
+            @(negedge clk);
+            atomic_consume[selected_hart] = 1'b0;
+            atomic_valid[selected_hart] = 1'b0;
+            atomic_select[selected_hart] = 1'b0;
+            atomic_op[
+                selected_hart*`RV64_LSU_OP_WIDTH +:
+                `RV64_LSU_OP_WIDTH] = `RV64_LSU_OP_INVALID;
+            atomic_addr[selected_hart*64 +: 64] = 64'd0;
+            atomic_operand[selected_hart*64 +: 64] = 64'd0;
         end
     endtask
 
@@ -1551,6 +1648,29 @@ module tb_ccx_4h_l1d_directory_l2 #(
     always @(posedge clk)
         cycle_count <= cycle_count + 1;
 
+    // Under four-way same-line store contention, all four commands are live
+    // before the home is released.  The crossbar must grant one transaction
+    // per hart in strict round-robin order.
+    always @(posedge clk) begin
+        if (rst_n && contention_monitor_active &&
+            ccx_req_valid && ccx_req_ready &&
+            (ccx_req_op == `OPENRV64_CCX_OP_WRITE) &&
+            ({ccx_req_addr[63:6], 6'b0} ==
+             contention_monitor_line)) begin
+            if (ccx_req_hart_id !=
+                `OPENRV64_CCX_HART_ID_WIDTH'(
+                    contention_expected_hart))
+                $fatal(1,
+                    "same-line arbitration order got hart=%0d expected=%0d line=%016x",
+                    ccx_req_hart_id, contention_expected_hart,
+                    contention_monitor_line);
+            contention_grant_count = contention_grant_count + 1;
+            contention_expected_hart =
+                (contention_expected_hart == NUM_HARTS - 1) ?
+                    0 : contention_expected_hart + 1;
+        end
+    end
+
     initial begin
         for (memory_line_index = 0;
              memory_line_index < MEMORY_LINES;
@@ -1604,6 +1724,11 @@ module tb_ccx_4h_l1d_directory_l2 #(
             random_state = 32'h1;
         random_store_count = 0;
         atomic_sequence = 0;
+        standalone_lr_count = 0;
+        contention_monitor_active = 1'b0;
+        contention_monitor_line = 64'd0;
+        contention_expected_hart = 0;
+        contention_grant_count = 0;
 
         repeat (6) @(posedge clk);
         @(negedge clk);
@@ -1667,25 +1792,117 @@ module tb_ccx_4h_l1d_directory_l2 #(
                 "second write probe targets/invalidations incorrect");
         issue_load(3, LINE_A, WRITE_A1);
 
-        if (protocol_error)
+        if (protocol_error || probe_endpoint_protocol_error)
             $fatal(1, "coherent protocol reported an integration error");
         if (l2_write_count != 2)
             $fatal(1, "L2 write command count=%0d expected=2",
                    l2_write_count);
 
+        // Sixteen-line four-hart ping-pong.  Each line is first shared by all
+        // readers, then receives four simultaneously queued stores, then four
+        // ordered AMOs.  The concurrent store phase is the deadlock test; the
+        // AMO phase verifies home LR/SC operation and repeated ownership loss.
+        for (pingpong_line = 0;
+             pingpong_line < PINGPONG_LINES;
+             pingpong_line = pingpong_line + 1) begin
+            pingpong_addr =
+                PINGPONG_BASE + pingpong_line*64;
+
+            fork
+                issue_load(
+                    0, pingpong_addr,
+                    reference_memory[line_index(pingpong_addr)][0 +: 64]);
+                issue_load(
+                    1, pingpong_addr,
+                    reference_memory[line_index(pingpong_addr)][0 +: 64]);
+                issue_load(
+                    2, pingpong_addr,
+                    reference_memory[line_index(pingpong_addr)][0 +: 64]);
+                issue_load(
+                    3, pingpong_addr,
+                    reference_memory[line_index(pingpong_addr)][0 +: 64]);
+            join
+
+            for (pingpong_hart = 0;
+                 pingpong_hart < NUM_HARTS;
+                 pingpong_hart = pingpong_hart + 1)
+                pingpong_data[pingpong_hart] =
+                    64'hcc40_0000_0000_0000 |
+                    (64'(pingpong_line) << 8) |
+                    64'(pingpong_hart);
+
+            fork
+                issue_store(0, pingpong_addr, pingpong_data[0]);
+                issue_store(1, pingpong_addr, pingpong_data[1]);
+                issue_store(2, pingpong_addr, pingpong_data[2]);
+                issue_store(3, pingpong_addr, pingpong_data[3]);
+            join
+            random_store_count = random_store_count + NUM_HARTS;
+
+            contention_monitor_line =
+                {pingpong_addr[63:6], 6'b0};
+            contention_expected_hart = u_crossbar.round_robin_q;
+            contention_grant_count = 0;
+            contention_monitor_active = 1'b1;
+            drain_store_mask({NUM_HARTS{1'b1}});
+            contention_monitor_active = 1'b0;
+            if (contention_grant_count != NUM_HARTS)
+                $fatal(1,
+                    "same-line arbitration granted %0d/%0d harts line=%016x",
+                    contention_grant_count, NUM_HARTS,
+                    contention_monitor_line);
+
+            issue_load(
+                pingpong_line % NUM_HARTS,
+                pingpong_addr,
+                reference_memory[line_index(pingpong_addr)][0 +: 64]);
+
+            for (pingpong_hart = 0;
+                 pingpong_hart < NUM_HARTS;
+                 pingpong_hart = pingpong_hart + 1) begin
+                issue_atomic(
+                    pingpong_hart,
+                    `RV64_LSU_OP_AMOADD,
+                    pingpong_addr,
+                    64'd1);
+                atomic_sequence = atomic_sequence + 1;
+            end
+        end
+        $display(
+            "pingpong: lines=%0d reads=%0d contended_stores=%0d atomics=%0d",
+            PINGPONG_LINES, PINGPONG_LINES*NUM_HARTS,
+            PINGPONG_LINES*NUM_HARTS,
+            PINGPONG_LINES*NUM_HARTS);
+
+        // An external writer must break a held LR reservation by forcing the
+        // old cache out of the line.  The subsequent SC fails locally and
+        // emits no home command.
+        pingpong_addr = PINGPONG_BASE;
+        issue_load(
+            0, pingpong_addr,
+            reference_memory[line_index(pingpong_addr)][0 +: 64]);
+        issue_lr_hold(
+            0, pingpong_addr,
+            reference_memory[line_index(pingpong_addr)][0 +: 64]);
+        standalone_lr_count = standalone_lr_count + 1;
+        pingpong_data[1] = 64'h1a5c_0000_0000_0001;
+        issue_store(1, pingpong_addr, pingpong_data[1]);
+        random_store_count = random_store_count + 1;
+        drain_stores(1);
+        issue_sc_expect_fail(
+            0, pingpong_addr, 64'hbad0_bad0_bad0_bad0);
+        issue_load(0, pingpong_addr, pingpong_data[1]);
+
         // Four operations are launched per round.  Their lines are distinct
         // within the round, so the accepted home order is the only ordering
-        // needed to update the reference model.  Stores remain posted until
-        // all concurrent loads have completed; this avoids conflating the
-        // current probe-progress limitation with data-order verification.
+        // needed to update the reference model.  The separate directed phase
+        // above covers same-line multi-writer probe progress.
         for (random_round = 0;
              random_round < RANDOM_ROUNDS;
              random_round = random_round + 1) begin
             planned_store_mask = {NUM_HARTS{1'b0}};
-            // At most one private store buffer may be non-empty.  A home
-            // probe currently forces a target buffer to drain before it can
-            // ACK, which otherwise permits a circular wait through the
-            // serialized directory.  Rotate the writer so every hart
+            // Keep the random phase at one writer per round so later reads
+            // have a simple reference order.  Rotate the writer so every hart
             // generates the same amount of store traffic.
             random_store_hart =
                 (random_round + random_seed) % NUM_HARTS;
@@ -1821,20 +2038,22 @@ module tb_ccx_4h_l1d_directory_l2 #(
         end
         if (home_write_active || l2_read_expected_valid)
             $fatal(1, "home verifier still has an active transaction");
-        if ((atomic_lr_command_count != atomic_sequence) ||
+        if ((atomic_lr_command_count !=
+             (atomic_sequence + standalone_lr_count)) ||
             (atomic_sc_command_count != atomic_sequence) ||
             (atomic_sc_success_count != atomic_sequence))
             $fatal(1,
-                "atomic command counts lr=%0d sc=%0d success=%0d expected=%0d",
+                "atomic command counts lr=%0d sc=%0d success=%0d expected_amo=%0d standalone_lr=%0d",
                 atomic_lr_command_count, atomic_sc_command_count,
-                atomic_sc_success_count, atomic_sequence);
+                atomic_sc_success_count, atomic_sequence,
+                standalone_lr_count);
         if (l2_write_count !=
             (2 + random_store_count + atomic_sequence))
             $fatal(1,
                 "home write count=%0d expected=%0d",
                 l2_write_count,
                 2 + random_store_count + atomic_sequence);
-        if (protocol_error)
+        if (protocol_error || probe_endpoint_protocol_error)
             $fatal(1, "coherent protocol failed during random stress");
 
         $display(

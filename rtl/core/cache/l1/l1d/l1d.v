@@ -35,6 +35,7 @@ module openrv64_l1d_ccx #(
     parameter integer PREFETCH_OUTSTANDING = 4,
     parameter integer PREFETCH_DEMAND_RESERVE = 2,
     parameter integer ATOMIC_HOT_LINES = 16,
+    parameter integer COHERENT_ATOMICS = 0,
     parameter integer SPECULATION_EPOCH_WIDTH = 8,
     // Simulation-only upper-bound mode. Cacheable, unlocked demand loads
     // complete from the testbench RAM oracle at a fixed MEM-issue-to-result
@@ -236,6 +237,7 @@ module openrv64_l1d_ccx #(
     reg request_buffered_store_q;
     reg request_demand_q;
     reg [DEMAND_MSHR_INDEX_WIDTH-1:0] request_demand_mshr_q;
+    reg request_reservation_q;
     reg request_reissue_q;
     reg [SPECULATION_EPOCH_WIDTH-1:0] request_epoch_q;
     reg command_sent_q;
@@ -271,6 +273,7 @@ module openrv64_l1d_ccx #(
     reg demand_waiter_valid_q [0:DEMAND_WAITER_COUNT-1];
     reg [DEMAND_MSHR_INDEX_WIDTH-1:0]
         demand_waiter_mshr_q [0:DEMAND_WAITER_COUNT-1];
+    reg tag_reservation_error_q [0:DEMAND_WAITER_COUNT-1];
 
     // A request's older-store snapshot is owned by its global LSU tag, not by
     // every response stage it traverses.  The payload has no reset and uses a
@@ -410,6 +413,8 @@ module openrv64_l1d_ccx #(
     integer buffer_reset_index;
     reg locked_line_invalidated_q;
     reg lock_barrier_seen_q;
+    reg coherent_lr_reservation_done_q;
+    reg coherent_lr_reservation_error_q;
     reg active_req_lock_q;
     // atomic_active_q is correctness state: a future snoop must retry or wait
     // while the local RMW owns this line.  atomic_hot_* is only evictable
@@ -576,8 +581,22 @@ module openrv64_l1d_ccx #(
             assign freeloader_oracle_data = 64'd0;
         end
     endgenerate
+    /*
+     * A coherent marked read is LR.  Its home reservation is established
+     * before the ordinary cached lookup is admitted.  Reserving afterward
+     * could pair stale resident data with a new reservation if a write
+     * interleaved between the lookup and the home transaction.
+     *
+     * Marked writes (SC and the write half of a decomposed AMO) still revoke
+     * the requester's clean copy before the conditional home write.
+     */
+    wire coherent_atomic_read =
+        (COHERENT_ATOMICS != 0) && req_lock_i && !req_write_i;
+    wire coherent_lr_reservation_request =
+        req_valid_i && coherent_atomic_read &&
+        !coherent_lr_reservation_done_q;
     wire lock_invalidate_request = req_valid_i && req_lock_i &&
-        !locked_line_invalidated_q;
+        !coherent_atomic_read && !locked_line_invalidated_q;
     wire lock_invalidate_fire = lock_invalidate_request &&
         !invalidate_valid_i && !demand_mshr_any_valid_r &&
         l1_invalidate_ready;
@@ -585,14 +604,19 @@ module openrv64_l1d_ccx #(
                                 !lock_barrier_seen_q;
     wire speculation_barrier_event =
         speculation_barrier_i || lock_barrier_request;
+    wire targeted_external_invalidate =
+        invalidate_valid_i && !invalidate_all_i;
     wire l1_invalidate_valid =
         (invalidate_valid_i || lock_invalidate_request) &&
-        !demand_mshr_any_valid_r;
+        (targeted_external_invalidate || !demand_mshr_any_valid_r);
     wire l1_invalidate_all = invalidate_valid_i && invalidate_all_i;
     wire [ADDR_WIDTH-1:0] l1_invalidate_addr = invalidate_valid_i ?
         invalidate_addr_i : req_addr_i;
     wire response_tag_full;
     wire response_tag_empty;
+    wire store_buffer_full =
+        (store_buffer_count_q ==
+         STORE_BUFFER_COUNT_WIDTH'(STORE_BUFFER_LINES));
     // Kept at this hierarchy for existing simulation diagnostics. Queue
     // ownership is in lsu_if.v.
     wire [REQ_COUNT_WIDTH-1:0] response_tag_count_q;
@@ -608,7 +632,9 @@ module openrv64_l1d_ccx #(
         !demand_mshr_any_valid_r &&
         (backend_state_q == BACKEND_IDLE);
     wire lock_request_ready = !req_lock_i ||
-        (locked_line_invalidated_q && lock_backend_quiescent);
+        (coherent_atomic_read ?
+         (coherent_lr_reservation_done_q && lock_backend_quiescent) :
+         (locked_line_invalidated_q && lock_backend_quiescent));
     wire freeloader_response_valid =
         freeloader_valid_q[FREELOADER_STAGES-1];
     wire demand_response_valid;
@@ -697,11 +723,25 @@ module openrv64_l1d_ccx #(
         freeloader_pipe_advance && freeloader_order_safe;
     wire freeloader_request_fire =
         freeloader_request && freeloader_request_ready;
+    /*
+     * Do not let a posted store enter the internal L1 write-through stage
+     * while its downstream FIFO is full.  That stage cannot accept a snoop;
+     * if it waits for a store-buffer drain while the coherence home waits for
+     * its snoop ACK, both sides deadlock.  Backpressure at admission keeps the
+     * internal L1 in STATE_RUN so targeted invalidation remains independent.
+     */
+    wire posted_store_admission_ready =
+        !(req_write_i && req_posted_i && req_cacheable_i &&
+          !req_lock_i) ||
+        !store_buffer_full;
     wire l1_req_valid = req_valid_i && !freeloader_request &&
+        !invalidate_valid_i &&
         (!request_needs_normal_response || !response_tag_full) &&
+        posted_store_admission_ready &&
         lock_request_ready &&
         !demand_load_store_block;
-    wire l1_req_cacheable = req_cacheable_i && !req_lock_i;
+    wire l1_req_cacheable =
+        req_cacheable_i && (!req_lock_i || coherent_atomic_read);
     wire l1_request_fire = l1_req_valid && l1_req_ready;
     wire request_overlay_needed =
         !req_write_i && !req_lock_i && req_cacheable_i &&
@@ -946,10 +986,13 @@ module openrv64_l1d_ccx #(
     // response then blocks new L1 lookups, so neither side can starve the
     // other.  The simulation-only freeloader remains last priority.
     assign req_ready_o = freeloader_request ?
-                         freeloader_request_ready :
+                         (freeloader_request_ready &&
+                          !invalidate_valid_i) :
                          (l1_req_ready &&
+                          !invalidate_valid_i &&
                           (!request_needs_normal_response ||
                            !response_tag_full) &&
+                          posted_store_admission_ready &&
                           lock_request_ready &&
                           !demand_load_store_block);
     assign resp_valid_o = demand_response_valid ||
@@ -966,13 +1009,20 @@ module openrv64_l1d_ccx #(
         normal_response_merged_data_r :
         freeloader_data_q[FREELOADER_STAGES-1];
     assign req_error_o = demand_response_valid ?
-        demand_mshr_error_q[demand_waiter_response_mshr_r] :
-        normal_response_valid ? l1_req_error : 1'b0;
+        (demand_mshr_error_q[demand_waiter_response_mshr_r] ||
+         tag_reservation_error_q[demand_waiter_response_tag_r]) :
+        normal_response_valid ?
+        (l1_req_error || tag_reservation_error_q[normal_response_tag]) :
+        1'b0;
     assign posted_resp_valid_o = l1_posted_resp_valid;
     assign posted_resp_tag_o = l1_posted_resp_tag;
+    // A targeted coherence snoop revokes the line even while unrelated
+    // stores or misses remain active.  Full-cache maintenance retains the
+    // old global-quiescence contract.
     assign invalidate_ready_o = l1_invalidate_ready &&
-        !lock_invalidate_request && (store_buffer_count_q == 0) &&
-        !demand_mshr_any_valid_r;
+        (targeted_external_invalidate ||
+         (!lock_invalidate_request && (store_buffer_count_q == 0) &&
+          !demand_mshr_any_valid_r));
 
     // Apply the request's snapshotted dirty bytes to a resident-hit response.
     // The same overlay is applied to refill data below, so subsequent hits
@@ -1591,9 +1641,11 @@ module openrv64_l1d_ccx #(
         end
     end
 
-    // Atomic phases never consume speculative data.  They bypass both the
-    // resident L1 and the prefetch fill buffers and obtain the current value
-    // from the L2/CCX path.
+    // Atomic phases never consume speculative fill-buffer data.  A coherent
+    // LR establishes its home reservation before this lookup.  It may use a
+    // resident clean L1 line; a miss becomes an ordinary shared read because
+    // the reservation already exists.  Marked writes bypass resident data
+    // after revoking their local copy.
     wire refill_buffer_hit = fill_buffer_hit_r && l1_mem_valid &&
         !l1_mem_write && active_req_cacheable_q && !active_req_lock_q &&
         !speculation_barrier_event &&
@@ -1603,7 +1655,10 @@ module openrv64_l1d_ccx #(
         fill_buffer_data_q[fill_buffer_hit_index_r];
     wire [511:0] response_refill_data = ccx_resp_rdata_i;
     wire [63:0] response_access_data =
-        ccx_resp_rdata_i[request_addr_q[5:3]*64 +: 64];
+        ((COHERENT_ATOMICS != 0) && request_lock_q &&
+         request_write_q) ?
+            {63'd0, !ccx_resp_sc_success_i} :
+            ccx_resp_rdata_i[request_addr_q[5:3]*64 +: 64];
     wire [511:0] response_mem_data = request_line_read_q ?
         response_refill_data : {{448{1'b0}}, response_access_data};
 
@@ -1678,9 +1733,6 @@ module openrv64_l1d_ccx #(
         end
     end
 
-    wire store_buffer_full =
-        (store_buffer_count_q ==
-         STORE_BUFFER_COUNT_WIDTH'(STORE_BUFFER_LINES));
     assign postable_store = l1_mem_valid && l1_mem_write &&
                             active_req_cacheable_q && active_req_posted_q;
     assign posted_store_line_data =
@@ -1717,7 +1769,8 @@ module openrv64_l1d_ccx #(
         (store_buffer_age_q[store_buffer_head_q] ==
          STORE_BUFFER_TIMEOUT_LAST);
     wire store_buffer_force_drain =
-        demand_load_store_block || invalidate_valid_i ||
+        demand_load_store_block ||
+        (invalidate_valid_i && invalidate_all_i) ||
         speculation_barrier_i ||
         store_barrier_active_q ||
         (req_valid_i && req_lock_i);
@@ -1841,6 +1894,7 @@ module openrv64_l1d_ccx #(
     // with the new epoch.  The protocol-facing encoding and independent
     // command/data handshakes live in ccx.v.
     openrv64_l1d_ccx_interface #(
+        .COHERENT_ATOMICS(COHERENT_ATOMICS),
         .HART_ID(HART_ID)
     ) u_ccx_interface (
         .send_valid_i(backend_state_q == BACKEND_SEND),
@@ -1907,6 +1961,7 @@ module openrv64_l1d_ccx #(
     assign prefetch_depth_o = prefetch_depth_q;
 
     wire main_response_reissue = main_response_fire &&
+        !request_reservation_q &&
         !request_write_q &&
         (request_reissue_q ||
          (request_epoch_q != speculation_epoch_q) ||
@@ -1920,7 +1975,8 @@ module openrv64_l1d_ccx #(
           l1_miss_addr)) ||
         prefetch_slot_available;
     wire main_response_overlay_ready =
-        request_write_q || request_buffered_store_q ||
+        request_reservation_q || request_write_q ||
+        request_buffered_store_q ||
         normal_overlay_ready;
     assign ccx_response_ready =
         ((backend_state_q == BACKEND_WAIT) &&
@@ -2032,6 +2088,7 @@ module openrv64_l1d_ccx #(
             request_demand_q <= 1'b0;
             request_demand_mshr_q <=
                 {DEMAND_MSHR_INDEX_WIDTH{1'b0}};
+            request_reservation_q <= 1'b0;
             request_reissue_q <= 1'b0;
             request_epoch_q <=
                 {SPECULATION_EPOCH_WIDTH{1'b0}};
@@ -2085,6 +2142,8 @@ module openrv64_l1d_ccx #(
                 demand_waiter_valid_q[demand_waiter_reset_index] <= 1'b0;
                 demand_waiter_mshr_q[demand_waiter_reset_index] <=
                     {DEMAND_MSHR_INDEX_WIDTH{1'b0}};
+                tag_reservation_error_q[
+                    demand_waiter_reset_index] <= 1'b0;
                 tag_overlay_needed_q[demand_waiter_reset_index] <= 1'b0;
                 tag_overlay_word_q[demand_waiter_reset_index] <= 3'd0;
             end
@@ -2108,6 +2167,8 @@ module openrv64_l1d_ccx #(
             end
             locked_line_invalidated_q <= 1'b0;
             lock_barrier_seen_q <= 1'b0;
+            coherent_lr_reservation_done_q <= 1'b0;
+            coherent_lr_reservation_error_q <= 1'b0;
             active_req_lock_q <= 1'b0;
             atomic_active_q <= 1'b0;
             atomic_active_line_q <= 64'd0;
@@ -2231,6 +2292,15 @@ module openrv64_l1d_ccx #(
                 lock_barrier_seen_q <= 1'b0;
             else if (lock_barrier_request)
                 lock_barrier_seen_q <= 1'b1;
+
+            if (!req_valid_i || !coherent_atomic_read) begin
+                coherent_lr_reservation_done_q <= 1'b0;
+                coherent_lr_reservation_error_q <= 1'b0;
+            end
+            if (l1_request_fire && coherent_atomic_read) begin
+                coherent_lr_reservation_done_q <= 1'b0;
+                coherent_lr_reservation_error_q <= 1'b0;
+            end
 
             if (freeloader_pipe_advance) begin
                 for (freeloader_stage_index = FREELOADER_STAGES - 1;
@@ -2428,19 +2498,28 @@ module openrv64_l1d_ccx #(
                 locked_line_invalidated_q <= 1'b0;
 
             if (l1_request_fire) begin
-                active_req_lock_q <= req_lock_i;
+                // The home has already performed the LR transaction.  A
+                // cache miss from this lookup is therefore an ordinary shared
+                // line read, not a second reservation transaction.
+                active_req_lock_q <=
+                    req_lock_i && !coherent_atomic_read;
                 active_req_posted_q <= req_posted_i;
-                // A locked operation bypasses this L1 after invalidating its
-                // resident copy, but it remains cacheable at the coherent
-                // home.  Marking it uncacheable here would let the L2 bypass
-                // a newer dirty line and perform the RMW on stale backing
-                // memory.
+                // The request remains cacheable at the coherent home. A
+                // coherent LR may also fill the clean private L1; marked
+                // writes bypass it after invalidating the resident copy.
+                // Marking either transaction uncacheable at the home would
+                // permit an RMW against stale backing memory.
                 active_req_cacheable_q <= req_cacheable_i;
                 active_req_size_q <= req_size_i;
+                tag_reservation_error_q[req_tag_i] <=
+                    coherent_atomic_read &&
+                    coherent_lr_reservation_error_q;
                 tag_overlay_needed_q[req_tag_i] <=
                     request_overlay_needed;
                 tag_overlay_word_q[req_tag_i] <= req_addr_i[5:3];
-                if (req_lock_i && !req_write_i)
+                if (req_lock_i && !req_write_i &&
+                    (!coherent_atomic_read ||
+                     !coherent_lr_reservation_error_q))
                     begin
                         atomic_active_q <= 1'b1;
                         atomic_active_line_q <=
@@ -2623,7 +2702,17 @@ module openrv64_l1d_ccx #(
                 if (!(l1_request_fire &&
                       (req_tag_i == normal_response_tag)))
                     tag_overlay_needed_q[normal_response_tag] <= 1'b0;
+                if (!(l1_request_fire &&
+                      (req_tag_i == normal_response_tag)))
+                    tag_reservation_error_q[
+                        normal_response_tag] <= 1'b0;
             end
+
+            if (demand_response_fire &&
+                !(l1_request_fire &&
+                  (req_tag_i == demand_waiter_response_tag_r)))
+                tag_reservation_error_q[
+                    demand_waiter_response_tag_r] <= 1'b0;
 
             if (refill_buffer_hit) begin
                 fill_buffer_valid_q[fill_buffer_hit_index_r] <= 1'b0;
@@ -2832,7 +2921,40 @@ module openrv64_l1d_ccx #(
 
             case (backend_state_q)
                 BACKEND_IDLE: begin
-                    if (store_buffer_drain_request &&
+                    if (coherent_lr_reservation_request &&
+                        lock_backend_quiescent &&
+                        main_txn_free_found_r) begin
+                        // This first phase establishes the home reservation
+                        // and conservatively records this L1D as a sharer.  Its
+                        // returned line is deliberately ignored: the second
+                        // phase must exercise the resident L1 line so snoop
+                        // invalidation failures remain observable.
+                        request_txn_id_q <= main_txn_free_id_r;
+                        request_write_q <= 1'b0;
+                        request_lock_q <= 1'b1;
+                        request_cacheable_q <= req_cacheable_i;
+                        request_line_read_q <= 1'b0;
+                        request_size_q <= req_size_i;
+                        request_addr_q <= req_addr_i;
+                        request_wdata_q <=
+                            {`OPENRV64_CCX_LINE_DATA_WIDTH{1'b0}};
+                        request_wstrb_q <=
+                            {`OPENRV64_CCX_LINE_STRB_WIDTH{1'b0}};
+                        request_buffered_store_q <= 1'b0;
+                        request_demand_q <= 1'b0;
+                        request_reservation_q <= 1'b1;
+                        request_reissue_q <= 1'b0;
+                        request_epoch_q <= speculation_barrier_event ?
+                            speculation_epoch_q + 1'b1 :
+                            speculation_epoch_q;
+                        request_prefetch_q <= 1'b0;
+                        request_discard_q <= 1'b0;
+                        prefetch_late_reported_q <= 1'b0;
+                        command_sent_q <= 1'b0;
+                        wdata_sent_q <= 1'b0;
+                        main_txn_in_use_q[main_txn_free_id_r] <= 1'b1;
+                        backend_state_q <= BACKEND_SEND;
+                    end else if (store_buffer_drain_request &&
                         main_txn_free_found_r) begin
                         request_txn_id_q <= main_txn_free_id_r;
                         request_write_q <= 1'b1;
@@ -2851,6 +2973,7 @@ module openrv64_l1d_ccx #(
                                 store_buffer_issue_index_r];
                         request_buffered_store_q <= 1'b1;
                         request_demand_q <= 1'b0;
+                        request_reservation_q <= 1'b0;
                         request_reissue_q <= 1'b0;
                         request_epoch_q <= speculation_epoch_q;
                         request_prefetch_q <= 1'b0;
@@ -2882,6 +3005,7 @@ module openrv64_l1d_ccx #(
                             {`OPENRV64_CCX_LINE_STRB_WIDTH{1'b0}};
                         request_buffered_store_q <= 1'b0;
                         request_demand_q <= 1'b1;
+                        request_reservation_q <= 1'b0;
                         request_demand_mshr_q <=
                             demand_mshr_issue_index_r;
                         request_reissue_q <= 1'b0;
@@ -2912,6 +3036,7 @@ module openrv64_l1d_ccx #(
                             {`OPENRV64_CCX_LINE_STRB_WIDTH{1'b0}};
                         request_buffered_store_q <= 1'b0;
                         request_demand_q <= 1'b0;
+                        request_reservation_q <= 1'b0;
                         request_reissue_q <= 1'b0;
                         request_epoch_q <= speculation_epoch_q;
                         request_prefetch_q <= 1'b1;
@@ -2946,6 +3071,7 @@ module openrv64_l1d_ccx #(
                               l1_mem_wstrb} << (l1_mem_addr[5:3] * 8);
                         request_buffered_store_q <= 1'b0;
                         request_demand_q <= 1'b0;
+                        request_reservation_q <= 1'b0;
                         request_reissue_q <= 1'b0;
                         request_epoch_q <= speculation_epoch_q;
                         request_prefetch_q <= 1'b0;
@@ -3009,7 +3135,16 @@ module openrv64_l1d_ccx #(
 
                 BACKEND_WAIT: begin
                     if (main_response_fire) begin
-                        if (main_response_reissue) begin
+                        if (request_reservation_q) begin
+                            main_txn_in_use_q[request_txn_id_q] <= 1'b0;
+                            request_reservation_q <= 1'b0;
+                            coherent_lr_reservation_done_q <= 1'b1;
+                            coherent_lr_reservation_error_q <=
+                                ccx_resp_error_i ||
+                                response_protocol_error;
+                            request_reissue_q <= 1'b0;
+                            backend_state_q <= BACKEND_IDLE;
+                        end else if (main_response_reissue) begin
                             request_reissue_q <= 1'b0;
                             request_epoch_q <=
                                 speculation_barrier_event ?
@@ -3222,6 +3357,47 @@ module openrv64_l1d_ccx #(
                             atomic_hot_valid_q[
                                 atomic_hot_reset_index] <= 1'b0;
                 end
+                // A targeted snoop is a generation boundary for matching
+                // detached demand misses.  Completed or simultaneously
+                // returning data is discarded and reissued; an older
+                // outstanding response is consumed by transaction ID before
+                // the MSHR becomes eligible again.  Waiters and their
+                // age-correct store overlays remain attached.
+                for (demand_reset_index = 0;
+                     demand_reset_index < DEMAND_MSHRS;
+                     demand_reset_index = demand_reset_index + 1) begin
+                    if (demand_mshr_valid_q[demand_reset_index] &&
+                        (l1_invalidate_all ||
+                         (demand_mshr_addr_q[demand_reset_index] ==
+                          {l1_invalidate_addr[63:6], 6'b0}))) begin
+                        demand_mshr_wait_prefetch_q[
+                            demand_reset_index] <= 1'b0;
+                        if (demand_mshr_complete_q[
+                                demand_reset_index] ||
+                            (demand_mshr_response_fire &&
+                             (demand_mshr_response_index_r ==
+                              DEMAND_MSHR_INDEX_WIDTH'(
+                                  demand_reset_index)))) begin
+                            demand_mshr_issued_q[
+                                demand_reset_index] <= 1'b0;
+                            demand_mshr_complete_q[
+                                demand_reset_index] <= 1'b0;
+                            demand_mshr_fill_done_q[
+                                demand_reset_index] <= 1'b0;
+                            demand_mshr_reissue_q[
+                                demand_reset_index] <= 1'b0;
+                            demand_mshr_error_q[
+                                demand_reset_index] <= 1'b0;
+                            demand_mshr_epoch_q[
+                                demand_reset_index] <=
+                                speculation_epoch_q;
+                        end else if (demand_mshr_issued_q[
+                                         demand_reset_index]) begin
+                            demand_mshr_reissue_q[
+                                demand_reset_index] <= 1'b1;
+                        end
+                    end
+                end
                 for (prefetch_reset_index = 0;
                      prefetch_reset_index < PREFETCH_QUEUE_LINES;
                      prefetch_reset_index =
@@ -3297,8 +3473,6 @@ module openrv64_l1d_ccx #(
     end
 
     // Reserved for native atomic responses; READ/WRITE L1D traffic ignores it.
-    wire unused_ccx_resp_sc_success = ccx_resp_sc_success_i;
-
 `ifndef SYNTHESIS
     integer store_assert_first;
     integer store_assert_second;

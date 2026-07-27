@@ -42,6 +42,8 @@ module openrv64_rv64_top_3p #(
     parameter ENABLE_RV64A = 1,
     parameter ENABLE_L1I = 1,
     parameter ENABLE_L1D = 1,
+    parameter ENABLE_L1D_COHERENCE_PROBES = 0,
+    parameter ENABLE_COHERENT_ATOMICS = 0,
     parameter integer L1I_CACHE_BYTES = 16 * 1024,
     parameter integer L1D_CACHE_BYTES = 16 * 1024,
     parameter [`RV64_XLEN-1:0] L1D_CACHEABLE_BASE =
@@ -191,6 +193,11 @@ module openrv64_rv64_top_3p #(
     input  wire [`OPENRV64_CCX_LINE_DATA_WIDTH-1:0] ccx_resp_rdata,
     input  wire        ccx_resp_error,
     input  wire        ccx_resp_sc_success,
+
+    input  wire        l1d_probe_valid_i,
+    output wire        l1d_probe_ready_o,
+    input  wire [63:0] l1d_probe_addr_i,
+    input  wire        coherent_reservation_clear_i,
 
     input  wire        irq_m_software,
     input  wire        irq_m_timer,
@@ -1006,6 +1013,7 @@ module openrv64_rv64_top_3p #(
         .ISSUE_WINDOW_DEPTH(RETIRE_DEPTH),
         .ENABLE_POSTED_STORES(ENABLE_POSTED_STORES),
         .STORE_QUEUE_DEPTH(STORE_QUEUE_DEPTH),
+        .ENABLE_COHERENT_ATOMICS(ENABLE_COHERENT_ATOMICS),
         .STORE_FORWARD_BASE(STORE_FORWARD_BASE),
         .STORE_FORWARD_SIZE(STORE_FORWARD_SIZE),
         .CACHEABLE_BASE(L1D_CACHEABLE_BASE),
@@ -1015,6 +1023,8 @@ module openrv64_rv64_top_3p #(
     ) u_backend (
         .clk(clk), .rst_n(rst_n), .flush_i(control_flush),
         .squash_frontend_i(control_redirect),
+        .coherent_reservation_clear_i(
+            coherent_reservation_clear_i),
         .translation_bypass_i(
             (csr_data_priv_mode == `RV64_PRIV_M) ||
             (csr_satp_mode == `RV64_SATP_MODE_BARE)),
@@ -1197,7 +1207,8 @@ module openrv64_rv64_top_3p #(
 
     openrv64_rv64i_csrs #(
         .ENABLE_RV64M(ENABLE_RV64M), .ENABLE_RV64A(ENABLE_RV64A),
-        .HPM_COUNTERS(HPM_COUNTERS)
+        .HPM_COUNTERS(HPM_COUNTERS),
+        .HART_ID(HART_ID)
     ) u_csrs (
         .clk(clk), .rst_n(rst_n), .csr_addr_i(csr_access_addr),
         .csr_rdata_o(csr_rdata), .csr_valid_o(csr_valid),
@@ -1266,6 +1277,9 @@ module openrv64_rv64_top_3p #(
         .ENABLE_MAGIC_MEMORY(ENABLE_MAGIC_MEMORY),
         .ENABLE_L1I(ENABLE_L1I),
         .ENABLE_L1D(ENABLE_L1D),
+        .ENABLE_L1D_COHERENCE_PROBES(
+            ENABLE_L1D_COHERENCE_PROBES),
+        .ENABLE_COHERENT_ATOMICS(ENABLE_COHERENT_ATOMICS),
         .L1I_CACHE_BYTES(L1I_CACHE_BYTES),
         .L1D_CACHE_BYTES(L1D_CACHE_BYTES),
         .L1D_CACHEABLE_BASE(L1D_CACHEABLE_BASE),
@@ -1325,6 +1339,9 @@ module openrv64_rv64_top_3p #(
         .fetch_pipe_resp_stash_o(fetch_pipe_resp_stash),
         .fetch_pipe_resp_demand_o(fetch_pipe_resp_demand),
         .fetch_pipe_cancel_stash_i(fetch3_cancel_stash),
+        .l1d_probe_valid_i(l1d_probe_valid_i),
+        .l1d_probe_ready_o(l1d_probe_ready_o),
+        .l1d_probe_addr_i(l1d_probe_addr_i),
         .lsu_valid_i(1'b0), .lsu_lock_i(1'b0), .lsu_write_i(1'b0),
         .lsu_addr_i(64'd0), .lsu_wdata_i(64'd0),
         .lsu_wstrb_i(8'd0), .lsu_size_i(3'd0),

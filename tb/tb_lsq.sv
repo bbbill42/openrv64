@@ -652,6 +652,28 @@ module tb_lsq;
 
         reset_dut();
 
+        // An arbitrary VA may translate before ordered retirement, but a
+        // translated physical address outside cacheable RAM must not issue a
+        // device read until that load becomes the ordered head.
+        alloc_load(IDW'(14), 3'd6, 64'hffff_ffd6_1000_2000, 3'd3);
+        take_xlate(1'b0, 64'hffff_ffd6_1000_2000, lt);
+        respond_xlate(lt, 64'h1_0020, 0, 0);
+        repeat (2) begin
+            tick();
+            if (req_valid)
+                $fatal(1,
+                    "translated non-RAM load escaped before ordered head");
+        end
+        head_valid = 1'b1;
+        head_id = IDW'(14);
+        head_slot = 3'd6;
+        take_req(1'b0, 64'h1_0020, lt);
+        respond_result(lt, 64'h1_0020, 64'h0bad_f00d_dead_beef,
+                       IDW'(14), 0, 64'h0bad_f00d_dead_beef);
+        head_valid = 1'b0;
+
+        reset_dut();
+
         // A cacheable load may pass an older translated store when the byte
         // ranges are disjoint, even if both addresses occupy one cache line.
         translation_bypass = 1'b1;

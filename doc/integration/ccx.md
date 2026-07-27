@@ -507,7 +507,7 @@ identifies the response destination.
 from refilling it.  Remote TLB shootdown is not an L2 probe operation; software
 must request it through a per-hart interrupt mechanism.
 
-## Recommended first coherent implementation
+## Current first coherent implementation
 
 The first implementation should retain the current write-through,
 no-write-allocate L1D and use Shared/Invalid state only.  The existing
@@ -519,14 +519,18 @@ The required sequence is:
 1. A cacheable L1 miss requests a 512-bit line beat, or a multi-line burst when
    the endpoint has a valid contiguous prefetch/refill request.
 2. Every returned line independently records the requesting endpoint as a
-   sharer.
-3. A write-through store invalidates every conflicting private copy and waits
-   for all acknowledgements.
+   sharer in the independently tagged home directory.
+3. A write-through store invalidates every conflicting remote D-cache copy and
+   waits for all acknowledgements.  Its requester retains the newly updated
+   clean copy.
 4. The L2 updates its byte-selected data and returns completion to the source.
-5. An inclusive L2 replacement invalidates all recorded private copies before
-   reusing the line.
-6. LR, SC, and AMO requests bypass private allocation and execute at L2 after
-   the required probes.
+5. A home-directory replacement invalidates all recorded private copies before
+   reusing the directory entry.  L2 is non-inclusive and may replace data
+   independently.
+6. A coherent LR first establishes a home reservation and then performs the
+   ordinary cached L1D lookup.  SC invalidates the requester locally, probes
+   remote sharers, and conditionally writes L2.  The compatibility AMO path
+   still computes locally and uses those LR/SC phases.
 7. Device and non-cacheable requests bypass allocation and merging and never
    form multi-line bursts.
 

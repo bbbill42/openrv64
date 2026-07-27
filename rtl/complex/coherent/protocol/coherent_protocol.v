@@ -211,7 +211,8 @@ module openrv64_ccx_coherent_protocol #(
         !(|(req_attr_q & `OPENRV64_CCX_ATTR_DEVICE));
     wire request_private_fill =
         request_cacheable &&
-        (req_op_q == `OPENRV64_CCX_OP_READ) &&
+        ((req_op_q == `OPENRV64_CCX_OP_READ) ||
+         (req_op_q == `OPENRV64_CCX_OP_LR)) &&
         ((req_source_id_q == `OPENRV64_CCX_SOURCE_ICACHE) ||
          (req_source_id_q == `OPENRV64_CCX_SOURCE_DCACHE));
     wire request_is_write =
@@ -253,6 +254,15 @@ module openrv64_ccx_coherent_protocol #(
     wire [63:0] directory_victim_line_addr;
     wire [NUM_HARTS-1:0] directory_victim_i_sharers;
     wire [NUM_HARTS-1:0] directory_victim_d_sharers;
+    /*
+     * The requester invalidates its own line before issuing SC.  Probing it
+     * again would deadlock: its L1D access waits for the SC response while the
+     * home waits for that same L1D to accept the redundant probe.  Probe only
+     * other sharers, then clear every D-sharer bit in ST_DIR_CLEAR.
+     *
+     * Ordinary write-through stores retain the requester's updated clean
+     * copy, and likewise probe only the other sharers.
+     */
     wire [NUM_HARTS-1:0] write_probe_targets =
         directory_lookup_d_sharers & ~request_hart_mask;
 
@@ -304,7 +314,9 @@ module openrv64_ccx_coherent_protocol #(
                                {NUM_HARTS{1'b0}}),
         .write_clear_i_sharers_i({NUM_HARTS{1'b0}}),
         .write_clear_d_sharers_i(
-            directory_clear ? probe_target_q :
+            directory_clear ?
+                ((req_op_q == `OPENRV64_CCX_OP_SC) ?
+                 {NUM_HARTS{1'b1}} : probe_target_q) :
                               {NUM_HARTS{1'b0}})
     );
 
@@ -578,6 +590,14 @@ module openrv64_ccx_coherent_protocol #(
                             `OPENRV64_CCX_PROBE_CACHE_D;
                         probe_line_addr_q <= request_line_addr;
                         state_q <= ST_WRITE_PROBE_START;
+                    end else if ((req_op_q == `OPENRV64_CCX_OP_SC) &&
+                                 directory_lookup_hit) begin
+                        // The successful SC requester already invalidated
+                        // itself.  With no remote sharers left to probe, still
+                        // pass through directory clear before writing L2.
+                        directory_entry_q <= directory_lookup_entry;
+                        probe_target_q <= {NUM_HARTS{1'b0}};
+                        state_q <= ST_DIR_CLEAR;
                     end else begin
                         state_q <= ST_L2_REQ;
                     end
@@ -676,8 +696,8 @@ module openrv64_ccx_coherent_protocol #(
                                         reservation_hart] <=
                                         request_line_addr;
                                 end
-                            state_q <= ST_RESP;
-                        end else if (request_private_fill &&
+                        end
+                        if (request_private_fill &&
                             !l2_resp_error_i &&
                             !l2_response_identity_error)
                             state_q <= ST_DIR_RECORD;

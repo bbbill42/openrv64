@@ -490,12 +490,15 @@ at the memory-ordering head until its tagged response. On success that response
 means the translated and PMP-approved store was admitted by L1D; retirement may
 then proceed while L1D drains the physical cache-line write independently.
 
-The static `STORE_FORWARD_BASE`/`STORE_FORWARD_SIZE` aperture currently
-classifies cacheable addresses for speculative load issue. It is not a
-complete PMA implementation. Outside that aperture, reads remain ordered.
-SATP, `SFENCE.VMA`, fences, and atomics cannot pass pending ordered memory
-state; younger non-memory execution may continue filling the retirement
-window.
+The static `L1D_CACHEABLE_BASE`/`L1D_CACHEABLE_SIZE` physical aperture
+classifies a translated load as cacheable RAM. It is not a complete PMA
+implementation. An ordinary load may begin translation past unresolved
+control regardless of its virtual address, but the LSQ does not release the
+physical access until translation has completed. A translated address outside
+the RAM aperture remains ordered at the retirement head, preventing
+speculative device reads. SATP, `SFENCE.VMA`, fences, stores, and atomics
+cannot pass pending ordered memory state; younger non-memory execution may
+continue filling the retirement window.
 
 RV64A drains simple MEM work and runs as a serialized ordered operation. It
 uses the core request/response contract rather than AXI exclusives. Atomics do
@@ -654,14 +657,14 @@ register-owner map. This is speculative execution, not a free branch: the
 wrong-path work still consumes issue capacity and the redirect still refills
 the frontend.
 
-Loads may pass an unresolved older branch or early direct JAL only when their
-effective address is inside the explicit `SPEC_LOAD_BASE`/`SPEC_LOAD_SIZE`
-aperture. The fixed 3P wrapper defaults that aperture to its 256 MiB RAM.
-Stores, atomics, MMIO reads, and memory-to-memory reordering remain
-conservative. Wrong-path RAM responses may return after recovery but are
-discarded by the non-reused instruction tag. This is enough for the current
-uncached test fabric; it is not a substitute for cache request cancellation,
-memory-dependence speculation, or an ordered load/store queue.
+Ordinary loads may begin translation past an unresolved older branch or early
+direct JAL without classifying their virtual address. Once translation
+returns, only a physical address inside the configured cacheable-RAM aperture
+may issue before ordered retirement. Stores, atomics, translated MMIO/non-RAM
+reads, and memory-to-memory reordering remain conservative. Wrong-path RAM
+responses may return after recovery but are discarded by the non-reused
+instruction tag. This is not a substitute for cache request cancellation or
+memory-dependence speculation.
 
 The implementation is selectable and checksum-tested, but it is not the
 current baseline. It has no dynamic physical-register renaming, retains

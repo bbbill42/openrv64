@@ -7,6 +7,79 @@ sw-coremark-loop: $(COREMARK_LOOP_ELF) $(COREMARK_LOOP_BIN)
 sw-coremark-loop-vm: $(CORE_3P_VM_ELF) $(CORE_3P_VM_BIN) \
 		$(CORE_3P_VM_MEMH) $(CORE_3P_VM_DISASM)
 
+sw-coremark-loop-4h-vm: $(CORE_4H_VM_ELF) $(CORE_4H_VM_TEMPLATE_BIN) \
+		$(CORE_4H_VM_BIN) $(CORE_4H_VM_MEMH) $(CORE_4H_VM_DISASM)
+
+sw-coremark-loop-4h-shared-vm: $(CORE_4H_SHARED_VM_ELF) \
+		$(CORE_4H_SHARED_VM_TEMPLATE_BIN) $(CORE_4H_SHARED_VM_BIN) \
+		$(CORE_4H_SHARED_VM_MEMH) $(CORE_4H_SHARED_VM_DISASM)
+
+sw-coremark-loop-4h-bare: $(CORE_4H_BARE_ELF) $(CORE_4H_BARE_BIN) \
+		$(CORE_4H_BARE_MEMH) $(CORE_4H_BARE_DISASM)
+
+sw-atomic-4h-shared-vm: $(ATOMIC_4H_SHARED_VM_ELF) \
+		$(ATOMIC_4H_SHARED_VM_TEMPLATE_BIN) $(ATOMIC_4H_SHARED_VM_BIN) \
+		$(ATOMIC_4H_SHARED_VM_MEMH) $(ATOMIC_4H_SHARED_VM_DISASM)
+
+sim-4h-3p-sv39: $(CORE_4H_3P_VERILATOR_BUILD) $(CORE_4H_VM_MEMH)
+	test -n "$(CORE_4H_VM_DONE_PC)"
+	test -n "$(CORE_4H_VM_MAILBOX_VA)"
+	$(CORE_4H_3P_VERILATOR_BUILD) \
+		+memh=$(abspath $(CORE_4H_VM_MEMH)) \
+		+memh_words=$(CORE_4H_VM_MEMH_WORDS) \
+		+done_pc=$(CORE_4H_VM_DONE_PC) \
+		+mailbox_va=$(CORE_4H_VM_MAILBOX_VA) \
+		+max_cycles=$(CORE_4H_VM_MAX_CYCLES)
+
+sim-4h-3p-shared-sv39: $(CORE_4H_3P_VERILATOR_BUILD) \
+		$(CORE_4H_SHARED_VM_MEMH)
+	test -n "$(CORE_4H_SHARED_VM_DONE_PC)"
+	test -n "$(CORE_4H_SHARED_VM_MAILBOX_VA)"
+	$(CORE_4H_3P_VERILATOR_BUILD) \
+		+memh=$(abspath $(CORE_4H_SHARED_VM_MEMH)) \
+		+memh_words=$(CORE_4H_SHARED_VM_MEMH_WORDS) \
+		+done_pc=$(CORE_4H_SHARED_VM_DONE_PC) \
+		+mailbox_va=$(CORE_4H_SHARED_VM_MAILBOX_VA) \
+		+shared_satp=1 +mailbox_stride=4096 \
+		+max_cycles=$(CORE_4H_SHARED_VM_MAX_CYCLES)
+
+sim-4h-3p-bare:
+	$(MAKE) sim-4h-3p-bare-configured \
+		CORE_4H_3P_SPEC_LOAD_BASE=2147483648
+
+sim-4h-3p-bare-configured: $(CORE_4H_3P_VERILATOR_BUILD) \
+		$(CORE_4H_BARE_MEMH)
+	test -n "$(CORE_4H_BARE_DONE_PC)"
+	test -n "$(CORE_4H_BARE_MAILBOX_PA)"
+	$(CORE_4H_3P_VERILATOR_BUILD) \
+		+memh=$(abspath $(CORE_4H_BARE_MEMH)) \
+		+memh_words=$(CORE_4H_BARE_MEMH_WORDS) \
+		+done_pc=$(CORE_4H_BARE_DONE_PC) \
+		+mailbox_va=$(CORE_4H_BARE_MAILBOX_PA) \
+		+bare=1 +mailbox_stride=4096 \
+		+max_cycles=$(CORE_4H_BARE_MAX_CYCLES)
+
+sim-4h-3p-atomic-sv39: $(CORE_4H_3P_VERILATOR_BUILD) \
+		$(ATOMIC_4H_SHARED_VM_MEMH)
+	test -n "$(ATOMIC_4H_SHARED_VM_DONE_PC)"
+	test -n "$(ATOMIC_4H_SHARED_VM_MAILBOX_VA)"
+	test -n "$(ATOMIC_4H_SHARED_VM_SUCCESS_VA)"
+	test -n "$(ATOMIC_4H_SHARED_VM_COUNTER_VA)"
+	$(CORE_4H_3P_VERILATOR_BUILD) \
+		+memh=$(abspath $(ATOMIC_4H_SHARED_VM_MEMH)) \
+		+memh_words=$(ATOMIC_4H_SHARED_VM_MEMH_WORDS) \
+		+done_pc=$(ATOMIC_4H_SHARED_VM_DONE_PC) \
+		+mailbox_va=$(ATOMIC_4H_SHARED_VM_MAILBOX_VA) \
+		+result_va=$(ATOMIC_4H_SHARED_VM_SUCCESS_VA) \
+		+result_expected=$(ATOMIC_4H_SHARED_VM_SUCCESSES) \
+		+atomic_counter_va=$(ATOMIC_4H_SHARED_VM_COUNTER_VA) \
+		+atomic_expected=$(ATOMIC_4H_SHARED_VM_FINAL_VALUE) \
+		+shared_satp=1 +mailbox_stride=4096 +atomic_test=1 \
+		+max_cycles=$(ATOMIC_4H_SHARED_VM_MAX_CYCLES)
+
+sim-4h-3p-shared-suite: sim-4h-3p-shared-sv39 \
+		sim-4h-3p-atomic-sv39
+
 sw-zero-sv39: $(ZERO_VM_ELF) $(ZERO_VM_BIN) $(ZERO_VM_MEMH) \
 		$(ZERO_VM_DISASM)
 

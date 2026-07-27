@@ -113,33 +113,64 @@ The current architectural RV64A block performs AMO arithmetic locally and
 marks both the read and write halves of its read/modify/write sequence.  At the
 L1D/CCX boundary:
 
-1. a marked read is encoded as `LR`;
-2. a marked write is encoded as `SC`;
-3. `req_lock` remains zero across the shared fabric;
-4. a successful home LR records one 64-byte reservation line for its hart;
-5. any accepted coherent write to that line clears matching reservations;
-6. every SC attempt consumes the requester's reservation;
-7. a matching SC is forwarded to L2 as an ordinary write and returns
+1. a marked read first issues `LR` to the home;
+2. the home read establishes a 64-byte reservation and conservatively records
+   the requesting L1D as a D-cache sharer;
+3. after that response, L1D performs the ordinary cached lookup and ignores
+   the line returned by the reservation transaction;
+4. a cached hit supplies the architectural LR value, while a miss issues an
+   ordinary shared `READ`, not a second `LR`;
+5. a marked write invalidates the requester's local copy and is encoded as
+   `SC`;
+6. `req_lock` remains zero across the shared fabric;
+7. any accepted coherent write to that line clears matching home
+   reservations;
+8. every SC attempt consumes the requester's home reservation;
+9. a matching SC invalidates all recorded remote D-cache sharers, clears the
+   complete D-sharer vector, is forwarded to L2 as an ordinary write, and
+   returns
    `sc_success=1`; and
-8. a non-matching SC consumes its tagged data beat, returns
+10. a non-matching SC consumes its tagged data beat, returns
    `sc_success=0`, and performs no L2 operation.
+
+Reserve-first ordering is required.  Looking up the private line and creating
+the home reservation afterward could pair a stale cached value with a fresh
+reservation if another hart writes between those two events.  A conflicting
+write after reservation creation instead finds the conservative sharer bit,
+invalidates the private line, and clears both the home and local reservation.
+
+The SC requester is excluded from the home probe mask.  Its L1D has already
+completed a contractual local invalidation before SC issue, and it cannot
+accept a redundant self-probe while its atomic access is stalled waiting for
+the SC response.  Including it creates a local protocol deadlock.  This
+exclusion does not preserve a requester copy: successful SC still clears all
+D-sharer bits for the line.
 
 The crossbar classifies SC as a write-data-bearing command.  L2 remains
 unaware of reservations and sees only the successful underlying read or
 write.
 
-This is not a complete multicore AMO implementation.  The original AMO opcode,
-width, and `aq`/`rl` information are not carried to the home, the L1D currently
-drops `sc_success`, and the local AMO engine does not retry failed SC.  The
-verified compatibility sequence therefore runs atomics only after other
-traffic has drained.  Contended AMOs remain unsupported.
+With `COHERENT_ATOMICS`, `SC_STATUS_IN_RDATA`, and
+`COHERENT_RESERVATIONS` enabled, the L1D returns failed-SC status to RV64A,
+the AMO engine restarts a failed decomposed AMO at its read half, and a direct
+architectural LR creates a home reservation.  A D-cache probe acceptance also
+clears the local reservation, so a later direct SC fails locally without
+issuing a stale home request.
 
-Standalone architectural LR/SC is also not integrated through this marker
-path yet.  The local RV64A block does not mark its LR read, so that read does
-not create a home reservation even though the coherent frontend has directed
-LR/SC coverage.  The core-to-L1D contract must carry the actual atomic opcode,
-or at minimum mark direct LR consistently, before claiming architectural
-multihart LR/SC.
+This remains a compatibility implementation, not a final home-atomic design.
+The original AMO opcode, width, and `aq`/`rl` information are not carried to
+the home; arithmetic still occurs in the local RV64A block.  Ordered same-line
+AMOs and explicit LR reservation loss are verified.  Concurrent AMOs that
+force the failed-SC retry path are not yet covered.
+
+Reservation and cache ownership are deliberately separate in the current
+clean S/I implementation.  There is no Exclusive or Modified owner.  If dirty
+private ownership is added, an LR that encounters a dirty owner must receive
+the owner's current data before the home can establish a reservation on the
+observed value.  A read downgrade from Exclusive to Shared need not by itself
+break the prior owner's reservation; any write, ownership transfer for write,
+or invalidation must.  Those rules require data-bearing probes and explicit
+owner/transient state and are not implemented here.
 
 ### Device request
 

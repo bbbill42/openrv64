@@ -34,6 +34,7 @@ module openrv64_exec_top_3p #(
     parameter integer ENABLE_LOCAL_FORWARDING = 1,
     parameter integer ENABLE_POSTED_STORES = 1,
     parameter integer STORE_QUEUE_DEPTH = 4,
+    parameter integer ENABLE_COHERENT_ATOMICS = 0,
     parameter [`RV64_XLEN-1:0] STORE_FORWARD_BASE = {`RV64_XLEN{1'b0}},
     parameter [`RV64_XLEN-1:0] STORE_FORWARD_SIZE = {`RV64_XLEN{1'b0}},
     parameter [`RV64_XLEN-1:0] CACHEABLE_BASE = {`RV64_XLEN{1'b0}},
@@ -44,6 +45,7 @@ module openrv64_exec_top_3p #(
     input  wire                         flush_i,
     input  wire                         squash_younger_i,
     input  wire [`OPENRV64_INSTR_ID_WIDTH-1:0] squash_id_i,
+    input  wire                         coherent_reservation_clear_i,
     input  wire                         translation_bypass_i,
 
     input  wire [`OPENRV64_EXEC_PIPE_COUNT-1:0] issue_valid_i,
@@ -434,6 +436,7 @@ module openrv64_exec_top_3p #(
         .RETIRE_SLOT_WIDTH(RETIRE_SLOT_WIDTH),
         .LOAD_QUEUE_DEPTH(4),
         .STORE_QUEUE_DEPTH(STORE_QUEUE_DEPTH),
+        .COHERENT_ATOMICS(ENABLE_COHERENT_ATOMICS),
         .CACHEABLE_BASE(CACHEABLE_BASE),
         .CACHEABLE_SIZE(CACHEABLE_SIZE)
     ) u_lsu (
@@ -442,6 +445,8 @@ module openrv64_exec_top_3p #(
         .flush_i(flush_i),
         .squash_younger_i(squash_younger_i),
         .squash_id_i(squash_id_i),
+        .coherent_reservation_clear_i(
+            coherent_reservation_clear_i),
         .translation_bypass_i(translation_bypass_i),
         .load_issue_valid_i(mem0_issue_valid),
         .load_issue_ready_o(mem0_issue_ready),

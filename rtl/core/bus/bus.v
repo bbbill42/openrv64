@@ -20,6 +20,8 @@ module openrv64_core_bus #(
     parameter integer L2_TLB_WAYS = 4,
     parameter integer ENABLE_L1I = 1,
     parameter integer ENABLE_L1D = 1,
+    parameter integer ENABLE_L1D_COHERENCE_PROBES = 0,
+    parameter integer ENABLE_COHERENT_ATOMICS = 0,
     parameter integer L1I_CACHE_BYTES = 16 * 1024,
     parameter integer L1D_CACHE_BYTES = 16 * 1024,
     parameter [`RV64_XLEN-1:0] L1D_CACHEABLE_BASE =
@@ -165,6 +167,11 @@ module openrv64_core_bus #(
     input  wire [2:0]                   icache_age_valid_i,
     input  wire [3*`RV64_XLEN-1:0]      icache_age_addr_i,
 
+    // Optional coherence-home invalidation path into the private L1D.
+    input  wire                         l1d_probe_valid_i,
+    output wire                         l1d_probe_ready_o,
+    input  wire [`RV64_XLEN-1:0]        l1d_probe_addr_i,
+
     // Generic physical request port.  It is active only in BUS_GEN mode.
     output wire                         req_valid_o,
     input  wire                         req_ready_i,
@@ -279,6 +286,7 @@ module openrv64_core_bus #(
 
     generate
         if (BUS_CONFIG == `OPENRV64_BUS_GEN) begin : g_gen
+            assign l1d_probe_ready_o = 1'b0;
             wire raw_req_valid;
             wire raw_req_ready = (raw_req_valid && !pmp_allow_i) ||
                                  req_ready_i;
@@ -604,6 +612,7 @@ module openrv64_core_bus #(
             // Preserve the serialization contract for one cycle so core-side
             // restart logic still observes the initiating barrier.
             assign tlbi_busy_o = tlbi_i;
+            assign l1d_probe_ready_o = 1'b0;
             localparam integer MAGIC_FETCH_DEPTH = 4;
             localparam integer MAGIC_FETCH_PTR_WIDTH =
                 $clog2(MAGIC_FETCH_DEPTH);
@@ -986,6 +995,10 @@ module openrv64_core_bus #(
                 .L2_TLB_WAYS(L2_TLB_WAYS),
                 .ENABLE_L1I(ENABLE_L1I),
                 .ENABLE_L1D(ENABLE_L1D),
+                .ENABLE_L1D_COHERENCE_PROBES(
+                    ENABLE_L1D_COHERENCE_PROBES),
+                .ENABLE_COHERENT_ATOMICS(
+                    ENABLE_COHERENT_ATOMICS),
                 .L1I_CACHE_BYTES(L1I_CACHE_BYTES),
                 .L1D_CACHE_BYTES(L1D_CACHE_BYTES),
                 .L1D_CACHEABLE_BASE(L1D_CACHEABLE_BASE),
@@ -1057,6 +1070,9 @@ module openrv64_core_bus #(
                     icache_prefetch_fallthrough_addr_i),
                 .icache_age_valid_i(icache_age_valid_i),
                 .icache_age_addr_i(icache_age_addr_i),
+                .l1d_probe_valid_i(l1d_probe_valid_i),
+                .l1d_probe_ready_o(l1d_probe_ready_o),
+                .l1d_probe_addr_i(l1d_probe_addr_i),
                 .lsu_pipe_req_valid_i(lsu_pipe_req_valid_i),
                 .lsu_pipe_req_ready_o(lsu_pipe_req_ready_o),
                 .lsu_pipe_req_tag_i(lsu_pipe_req_tag_i),

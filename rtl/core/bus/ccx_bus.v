@@ -20,6 +20,8 @@ module openrv64_core_ccx_bus #(
     parameter integer FETCH_OUTSTANDING = 4,
     parameter integer ENABLE_L1I = 1,
     parameter integer ENABLE_L1D = 1,
+    parameter integer ENABLE_L1D_COHERENCE_PROBES = 0,
+    parameter integer ENABLE_COHERENT_ATOMICS = 0,
     parameter integer L1I_CACHE_BYTES = 16 * 1024,
     parameter integer L1D_CACHE_BYTES = 16 * 1024,
     parameter [`RV64_XLEN-1:0] L1D_CACHEABLE_BASE =
@@ -150,6 +152,12 @@ module openrv64_core_ccx_bus #(
     input  wire [`RV64_XLEN-1:0]        icache_prefetch_fallthrough_addr_i,
     input  wire [2:0]                   icache_age_valid_i,
     input  wire [3*`RV64_XLEN-1:0]      icache_age_addr_i,
+
+    // Optional external coherence probe.  This invalidates one D-cache line;
+    // reservation clearing remains a separate backend integration seam.
+    input  wire                         l1d_probe_valid_i,
+    output wire                         l1d_probe_ready_o,
+    input  wire [`RV64_XLEN-1:0]        l1d_probe_addr_i,
 
     // One physical protection probe is presented for the transaction which
     // would be launched this cycle.  Denials complete locally as access
@@ -1247,6 +1255,10 @@ module openrv64_core_ccx_bus #(
         l1d_posted_resp_tag;
     wire l1d_store_resp_valid;
     wire l1d_store_resp_error;
+    wire l1d_invalidate_ready;
+    assign l1d_probe_ready_o =
+        (ENABLE_L1D_COHERENCE_PROBES != 0) &&
+        l1d_invalidate_ready;
 
     wire l1d_ccx_req_valid;
     wire l1d_ccx_req_ready;
@@ -1291,6 +1303,7 @@ module openrv64_core_ccx_bus #(
 
     openrv64_l1d_ccx #(
         .ENABLE(ENABLE_L1D),
+        .COHERENT_ATOMICS(ENABLE_COHERENT_ATOMICS),
         .ADDR_WIDTH(`RV64_XLEN),
         .CACHE_BYTES(L1D_CACHE_BYTES),
         .LINE_BYTES(64),
@@ -1345,10 +1358,12 @@ module openrv64_core_ccx_bus #(
         .prefetch_depth_o(),
         .speculation_barrier_i(tlbi_i),
         .store_barrier_busy_o(l1d_store_barrier_busy),
-        .invalidate_valid_i(1'b0),
-        .invalidate_ready_o(),
+        .invalidate_valid_i(
+            (ENABLE_L1D_COHERENCE_PROBES != 0) &&
+            l1d_probe_valid_i),
+        .invalidate_ready_o(l1d_invalidate_ready),
         .invalidate_all_i(1'b0),
-        .invalidate_addr_i({`RV64_XLEN{1'b0}}),
+        .invalidate_addr_i(l1d_probe_addr_i),
         .ccx_req_valid_o(l1d_ccx_req_valid),
         .ccx_req_ready_i(l1d_ccx_req_ready),
         .ccx_req_hart_id_o(l1d_ccx_req_hart_id),

@@ -27,6 +27,78 @@ CORE_3P_VM_MEMH_WORDS := 4608
 CORE_3P_VM_MAX_CYCLES ?= 300000
 CORE_3P_VM_DONE_PC = $(shell $(RISCV_NM) -n $(CORE_3P_VM_ELF) | \
 	awk '$$3 == "coremark_vm_done" { print $$1 }')
+CORE_4H_VM_ELF := sim/coremark-loop-4h-vm.elf
+CORE_4H_VM_TEMPLATE_BIN := sim/coremark-loop-4h-vm-template.bin
+CORE_4H_VM_BIN := sim/coremark-loop-4h-vm.bin
+CORE_4H_VM_MEMH := sim/coremark-loop-4h-vm-512.memh
+CORE_4H_VM_MAP := sim/coremark-loop-4h-vm.map
+CORE_4H_VM_DISASM := sim/coremark-loop-4h-vm.disasm
+CORE_4H_VM_MEMH_BYTES := 0x323000
+CORE_4H_VM_MEMH_WORDS := 51392
+CORE_4H_VM_MAX_CYCLES ?= 800000
+CORE_4H_VM_DONE_PC = $(shell $(RISCV_NM) -n $(CORE_4H_VM_ELF) | \
+	awk '$$3 == "coremark_4h_vm_done" { print $$1 }')
+CORE_4H_VM_MAILBOX_VA = $(shell $(RISCV_NM) -n $(CORE_4H_VM_ELF) | \
+	awk '$$3 == "coremark_4h_done_mailbox" { print $$1 }')
+CORE_4H_3P_L1D_PREFETCH_ENABLE ?= 1
+CORE_4H_3P_VERILATOR_THREADS ?= 4
+CORE_4H_3P_SPEC_LOAD_BASE ?= 1073741824
+CORE_4H_3P_SPEC_LOAD_SIZE ?= 131072
+CORE_4H_3P_VERILATOR_DIR := \
+	build/verilator/core-4h-3p-t$(CORE_4H_3P_VERILATOR_THREADS)-pf$(CORE_4H_3P_L1D_PREFETCH_ENABLE)-spec$(CORE_4H_3P_SPEC_LOAD_BASE)x$(CORE_4H_3P_SPEC_LOAD_SIZE)
+CORE_4H_3P_VERILATOR_BUILD := \
+	$(CORE_4H_3P_VERILATOR_DIR)/core_4h_3p_tb
+CORE_4H_SHARED_VM_ELF := sim/coremark-loop-4h-shared-vm.elf
+CORE_4H_SHARED_VM_TEMPLATE_BIN := \
+	sim/coremark-loop-4h-shared-vm-template.bin
+CORE_4H_SHARED_VM_BIN := sim/coremark-loop-4h-shared-vm.bin
+CORE_4H_SHARED_VM_MEMH := sim/coremark-loop-4h-shared-vm-512.memh
+CORE_4H_SHARED_VM_MAP := sim/coremark-loop-4h-shared-vm.map
+CORE_4H_SHARED_VM_DISASM := sim/coremark-loop-4h-shared-vm.disasm
+CORE_4H_SHARED_VM_MEMH_BYTES := 0x23000
+CORE_4H_SHARED_VM_MEMH_WORDS := 2240
+CORE_4H_SHARED_VM_MAX_CYCLES ?= 800000
+CORE_4H_SHARED_VM_DONE_PC = $(shell $(RISCV_NM) -n \
+	$(CORE_4H_SHARED_VM_ELF) | \
+	awk '$$3 == "coremark_4h_shared_vm_done" { print $$1 }')
+CORE_4H_SHARED_VM_MAILBOX_VA = $(shell $(RISCV_NM) -n \
+	$(CORE_4H_SHARED_VM_ELF) | \
+	awk '$$3 == "coremark_4h_shared_pages" { print $$1 }')
+CORE_4H_BARE_ELF := sim/coremark-loop-4h-bare.elf
+CORE_4H_BARE_BIN := sim/coremark-loop-4h-bare.bin
+CORE_4H_BARE_MEMH := sim/coremark-loop-4h-bare-512.memh
+CORE_4H_BARE_MAP := sim/coremark-loop-4h-bare.map
+CORE_4H_BARE_DISASM := sim/coremark-loop-4h-bare.disasm
+CORE_4H_BARE_MEMH_BYTES := 0x20000
+CORE_4H_BARE_MEMH_WORDS := 2048
+CORE_4H_BARE_MAX_CYCLES ?= 800000
+CORE_4H_BARE_DONE_PC = $(shell $(RISCV_NM) -n $(CORE_4H_BARE_ELF) | \
+	awk '$$3 == "coremark_4h_bare_done" { print $$1 }')
+CORE_4H_BARE_MAILBOX_PA = $(shell $(RISCV_NM) -n $(CORE_4H_BARE_ELF) | \
+	awk '$$3 == "coremark_4h_bare_pages" { print $$1 }')
+ATOMIC_4H_SHARED_VM_ELF := sim/atomic-4h-shared-vm.elf
+ATOMIC_4H_SHARED_VM_TEMPLATE_BIN := sim/atomic-4h-shared-vm-template.bin
+ATOMIC_4H_SHARED_VM_BIN := sim/atomic-4h-shared-vm.bin
+ATOMIC_4H_SHARED_VM_MEMH := sim/atomic-4h-shared-vm-512.memh
+ATOMIC_4H_SHARED_VM_MAP := sim/atomic-4h-shared-vm.map
+ATOMIC_4H_SHARED_VM_DISASM := sim/atomic-4h-shared-vm.disasm
+ATOMIC_4H_SHARED_VM_MEMH_BYTES := 0x23000
+ATOMIC_4H_SHARED_VM_MEMH_WORDS := 2240
+ATOMIC_4H_SHARED_VM_MAX_CYCLES ?= 2000000
+ATOMIC_4H_SHARED_VM_FINAL_VALUE := 256
+ATOMIC_4H_SHARED_VM_SUCCESSES := 64
+ATOMIC_4H_SHARED_VM_DONE_PC = $(shell $(RISCV_NM) -n \
+	$(ATOMIC_4H_SHARED_VM_ELF) | \
+	awk '$$3 == "atomic_4h_shared_vm_done" { print $$1 }')
+ATOMIC_4H_SHARED_VM_MAILBOX_VA = $(shell $(RISCV_NM) -n \
+	$(ATOMIC_4H_SHARED_VM_ELF) | \
+	awk '$$3 == "atomic_4h_private_pages" { print $$1 }')
+ATOMIC_4H_SHARED_VM_SUCCESS_VA = $(shell $(RISCV_NM) -n \
+	$(ATOMIC_4H_SHARED_VM_ELF) | \
+	awk '$$3 == "atomic_4h_success_base" { print $$1 }')
+ATOMIC_4H_SHARED_VM_COUNTER_VA = $(shell $(RISCV_NM) -n \
+	$(ATOMIC_4H_SHARED_VM_ELF) | \
+	awk '$$3 == "atomic_4h_counter" { print $$1 }')
 ZERO_VM_ELF := sim/zero-sv39.elf
 ZERO_VM_BIN := sim/zero-sv39.bin
 ZERO_VM_MEMH := sim/zero-sv39.memh

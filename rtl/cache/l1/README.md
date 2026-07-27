@@ -243,8 +243,10 @@ releases the dependency; the architectural demand then issues normally, so a
 prefetch fault cannot become a demand fault without a demand retry.
 
 L1D also retains two distinct forms of atomic metadata. `atomic_active_q` and
-its line address are non-evictable transient state for the one in-progress
-local RMW. A future snoop must retry, wait, or be NACKed on a match.
+its line address identify the one in-progress local RMW.  In coherent mode a
+matching snoop may revoke the private line and clears the RV64A reservation;
+if the computed write later reaches the home as an SC, failure restarts the
+AMO at its read half.
 `ATOMIC_HOT_LINES` defaults to a 16-entry evictable line directory used only
 as a prefetch hint. Marked accesses insert there, untrain a matching stream,
 and prevent later training, candidate generation, or issue for that line.
@@ -261,7 +263,11 @@ adaptive depth.  They are observability signals, not architectural counters.
 The command and write-data channels remain independently backpressured and are
 correlated by hart, source, and transaction IDs. A later cacheable read may
 consume retained same-line dirty bytes through the snapshotted line overlay;
-external invalidation is not acknowledged until the store FIFO has drained.
+full-cache maintenance is not acknowledged until the store FIFO has drained.
+A targeted coherence invalidation does not wait for unrelated store entries
+or demand MSHRs.  A matching issued MSHR consumes its old response without
+installing it and then reissues the line; its tagged waiters and store overlay
+remain attached.
 `#LOCK` accesses bypass and
 invalidate L1D and remain non-posted, but in the single-hart configuration the
 marker is local and is not forwarded as a CCX/L2 home lock.  Uncached/device
@@ -287,20 +293,30 @@ and allowing one hart to hold eight unacknowledged stores. Configurations with
 a deeper store FIFO or more simultaneous same-line waiters still require a
 larger tag namespace or a separate deferred-fault metadata queue.
 
-The current one-hart AMO bring-up path uses `req_lock_i` as a local phase
-marker. Before either marked phase proceeds, L1D invalidates its resident copy
-of the addressed line. The phase then bypasses L1 lookup, speculative fill
-buffers, and allocation while retaining the original cacheable PMA attribute
-at CCX. `ccx_req_lock_o` is tied low: there is no shared-home lock or
-exclusion.
+The default one-hart AMO path uses `req_lock_i` as a local phase marker. Before
+either marked phase proceeds, L1D invalidates its resident copy of the
+addressed line. The phase then bypasses L1 lookup, speculative fill buffers,
+and allocation while retaining the original cacheable PMA attribute at CCX.
+`ccx_req_lock_o` remains tied low.
 
-This is self-invalidation for a one-hart serialized AMO, not a snoop protocol.
-External invalidation drains the lookup/response pipeline before modifying
-tags. The local `atomic_active` line is the intended future snoop-visible
-transient, but there is still no probe queue, retry/NACK response, directory,
-or probe acknowledgement path. MESI Exclusive is not reused for this purpose:
-ordinary clean demand fills are already Exclusive, while an active RMW needs
-a distinct transient state.
+When `COHERENT_ATOMICS` is enabled, a marked read first issues an LR to the
+coherent home to establish the reservation, then performs the ordinary cached
+L1D lookup.  Reserve-first ordering prevents a write between a cached lookup
+and reservation creation from pairing stale data with a fresh reservation.
+If that lookup misses, its refill is an ordinary shared read; it does not
+create a second reservation.  A marked write invalidates the requester's local
+copy and is encoded as SC.  SC success is returned to RV64A through the marked
+write response.  These options are disabled by default so the existing
+one-hart L2 continues to receive its established protocol.
+
+The CCX4 coherent path supplies one independent invalidate-probe slot per L1D
+in `openrv64_ccx_4h_l1d_probe_cluster`.  Probe acceptance clears the hart's LR
+reservation immediately, but ACK is withheld until the real targeted
+tag/refill invalidation completes.  Timeout records a protocol error and never
+manufactures an ACK.  The home excludes an SC requester from its probe target
+mask because the requester invalidates locally before issuing SC; probing it
+again would deadlock behind the SC response.  Successful SC still clears every
+D-sharer bit for the line.  L1I has no probe endpoint.
 
 The core bus arbitrates independent I-cache and D-cache command sources and
 routes responses by `source_id`; only L1D drives write data.  The L1 arrays are

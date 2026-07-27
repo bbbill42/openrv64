@@ -47,7 +47,7 @@ L1I/L1D -> CCX -> L2 -> AXI -> banked-DDR3 path.
 | DDR3 queues | 8 read / 8 write / 16 command |
 | Memory timing model | 0, banked DDR3 enabled |
 | Backing RAM | 16 MiB |
-| Sv39 speculative-load aperture | base `0x40000000`; 128 KiB for CoreMark, 256 KiB for STREAM |
+| Speculative-load PMA gate | translated PA must be inside configured backing RAM; VA is not classified |
 
 `ISSUE_WINDOW` and `SPECULATION_WINDOW` are enable controls in the RTL; the
 actual issue-window depth is `RETIRE_DEPTH`. Any nonzero speculation value

@@ -8,6 +8,7 @@
 // command/data channel encoding and their independent ready/valid handshakes.
 // That keeps the cache policy state out of the CCX pin-level implementation.
 module openrv64_l1d_ccx_interface #(
+    parameter integer COHERENT_ATOMICS = 0,
     parameter [`OPENRV64_CCX_HART_ID_WIDTH-1:0] HART_ID =
         {`OPENRV64_CCX_HART_ID_WIDTH{1'b0}}
 ) (
@@ -85,15 +86,15 @@ module openrv64_l1d_ccx_interface #(
     assign ccx_req_hart_id_o = HART_ID;
     assign ccx_req_txn_id_o = request_txn_id_i;
     assign ccx_req_source_id_o = `OPENRV64_CCX_SOURCE_DCACHE;
-    // The current RV64A engine owns LR/SC reservations locally and does not
-    // consume the CCX SC-success response.  Its compatibility marker therefore
-    // cannot be promoted to fabric LR/SC intent yet: doing so sends an
-    // unsupported LR directly into the non-coherent L2 and also omits the LR
-    // half of a standalone LR/SC pair.  Keep the established READ/WRITE
-    // contract until reservation ownership moves to the coherent home.
-    wire unused_request_atomic = request_atomic_i;
-    assign ccx_req_op_o = request_write_i ? `OPENRV64_CCX_OP_WRITE :
-                                            `OPENRV64_CCX_OP_READ;
+    // A coherent home owns the reservation used by a marked read/modify/write
+    // sequence. Keep this opt-in: the single-hart native L2 still consumes
+    // the established READ/WRITE compatibility encoding.
+    assign ccx_req_op_o =
+        (COHERENT_ATOMICS != 0) && request_atomic_i ?
+            (request_write_i ? `OPENRV64_CCX_OP_SC :
+                               `OPENRV64_CCX_OP_LR) :
+            (request_write_i ? `OPENRV64_CCX_OP_WRITE :
+                               `OPENRV64_CCX_OP_READ);
     assign ccx_req_lock_o = 1'b0;
     assign ccx_req_order_o = `OPENRV64_CCX_ORDER_NONE;
     assign ccx_req_kind_o = `OPENRV64_CCX_KIND_DATA;

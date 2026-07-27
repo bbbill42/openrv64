@@ -323,10 +323,10 @@ module tb_dispatch_window_3p;
         tick();
         clear_inputs();
 
-        // A load whose base is supplied by a producer completion must use
-        // that awakened value for the speculative RAM-aperture check.  The
-        // decode-captured placeholder is zero and would incorrectly hold this
-        // safe load behind the already-issued branch.
+        // A load whose base is supplied by a producer completion may begin
+        // translation behind a live branch even when its virtual address is
+        // outside the old physical-looking aperture.  PMA classification
+        // belongs to the translated physical address in the LSQ, not this VA.
         flush = 1'b1;
         tick();
         flush = 1'b0;
@@ -355,13 +355,13 @@ module tb_dispatch_window_3p;
         completion_valid = 3'b001;
         completion_id[0 +: IDW] = IDW'(40);
         completion_payload[0 +: OW] =
-            reg_completion(5'd5, 64'h0000_0000_8000_0100);
+            reg_completion(5'd5, 64'hffff_ffd6_0000_1000);
         #1;
         if (!pipe_valid[2] ||
             (pipe_id[2*IDW +: IDW] != IDW'(42)) ||
             (pipe_payload[2*IW + I_RS1_DATA +: 64] !=
-             64'h0000_0000_8000_0100))
-            fail("awakened RAM load did not pass live branch safely");
+             64'hffff_ffd6_0000_1000))
+            fail("arbitrary-VA load did not reach translation past branch");
         tick();
         clear_inputs();
 

@@ -21,10 +21,12 @@
 // unissued memory operations may enter MEM0 and MEM1 together when they target
 // opposite lanes and both lanes accept the complete pair.  The optional
 // speculation mode lets replayable work pass an older conditional branch that
-// is still waiting for operands, and lets ordinary loads in an explicit
-// RAM/cacheable aperture pass unresolved control.  Stores, atomics, and MMIO
-// remain protected.  Legal aligned direct JALs are deterministic controls, so
-// they do not form an issue barrier even before reaching the retirement head.
+// is still waiting for operands, and lets ordinary loads begin translation
+// past unresolved control.  The physically addressed LSQ admits the later
+// cache access only when translation classifies the result as cacheable RAM;
+// device/non-RAM loads wait for ordered retirement.  Stores and atomics remain
+// protected.  Legal aligned direct JALs are deterministic controls, so they do
+// not form an issue barrier even before reaching the retirement head.
 // Conditional branches themselves resolve in program order so a younger
 // wrong-path branch cannot redirect or train before an older branch resolves.
 module openrv64_dispatch_window_3p #(
@@ -231,24 +233,17 @@ module openrv64_dispatch_window_3p #(
         end
     endfunction
 
-    function automatic is_speculative_load_safe;
+    function automatic is_speculative_load_candidate;
         input [`OPENRV64_EXEC_ISSUE_PAYLOAD_WIDTH-1:0] payload;
-        input [`RV64_XLEN-1:0] issue_rs1_data;
-        reg [`RV64_XLEN-1:0] effective_addr;
         begin
-            // The base may have arrived from an older producer after decode.
-            // Classifying with the stale payload copy could let a dependent
-            // wrong-path MMIO access escape under a RAM-looking old value.
-            effective_addr = issue_rs1_data +
-                             payload[PAYLOAD_IMM +: `RV64_XLEN];
-            // Only ordinary loads in the explicitly cacheable/RAM aperture may
-            // pass a live branch.  Stores, atomics, and MMIO reads retain the
-            // conservative ordering rule.
-            is_speculative_load_safe =
+            // A virtual address cannot establish PMA/cacheability.  Permit an
+            // ordinary load to reach translation; the LSQ waits for the
+            // translated physical address and suppresses device/non-RAM
+            // access until the instruction is the ordered retirement head.
+            // AMOs assert MEM_WRITE as well as MEM_READ and remain excluded.
+            is_speculative_load_candidate =
                 (ENABLE_SPECULATION != 0) && payload[PAYLOAD_MEM_READ] &&
-                !payload[PAYLOAD_MEM_WRITE] && (SPEC_LOAD_SIZE != 0) &&
-                (effective_addr >= SPEC_LOAD_BASE) &&
-                ((effective_addr - SPEC_LOAD_BASE) < SPEC_LOAD_SIZE);
+                !payload[PAYLOAD_MEM_WRITE];
         end
     endfunction
 
@@ -614,9 +609,8 @@ module openrv64_dispatch_window_3p #(
                 is_mem(payload_q[eligible_idx]);
             if (is_mem(payload_q[eligible_idx]) &&
                 older_live_control &&
-                !is_speculative_load_safe(
-                    payload_q[eligible_idx],
-                    src1_data_now[eligible_idx])) begin
+                !is_speculative_load_candidate(
+                    payload_q[eligible_idx])) begin
                 eligible[eligible_idx] = 1'b0;
                 mem_pair_eligible[eligible_idx] = 1'b0;
             end
@@ -643,9 +637,8 @@ module openrv64_dispatch_window_3p #(
                     if ((is_mem(payload_q[eligible_idx]) &&
                          (older_unissued_mem ||
                          (older_live_control &&
-                           !is_speculative_load_safe(
-                               payload_q[eligible_idx],
-                               src1_data_now[eligible_idx])))))
+                           !is_speculative_load_candidate(
+                               payload_q[eligible_idx])))))
                         trace_mem_order_block_count =
                             trace_mem_order_block_count + 1'b1;
                     else if (older_unissued_hard || older_persistent_hard ||

@@ -436,8 +436,12 @@ module openrv64_l1_cache #(
     wire response_fire = response_valid_q && resp_ready_i;
     wire invalidate_quiescent = !response_valid_q || resp_ready_i;
 
-    assign invalidate_ready_o = (state_q == STATE_RUN) &&
-                                invalidate_quiescent;
+    // A held read response already contains its pre-snoop value.  Tag
+    // invalidation may therefore complete without waiting for the requester
+    // to consume that response.  This keeps coherence progress independent
+    // of retirement backpressure while preserving the read-before-snoop
+    // ordering point.
+    assign invalidate_ready_o = (state_q == STATE_RUN);
     assign req_ready_o = request_base_ready &&
                          (!req_separate_write_resp_i ||
                           write_response_slot_available) &&

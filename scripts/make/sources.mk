@@ -53,6 +53,7 @@ CCX_COHERENT_SRCS := rtl/complex/coherent/protocol/defs.v \
 	rtl/complex/coherent/directory.v \
 	rtl/complex/coherent/snoop_filter.v \
 	rtl/complex/coherent/probe_tracker.v \
+	rtl/complex/coherent/l1d_probe_endpoint.v \
 	rtl/complex/coherent/control.v \
 	rtl/complex/coherent/protocol/coherent_protocol.v \
 	rtl/complex/2h/ccx.v rtl/complex/4h/ccx.v

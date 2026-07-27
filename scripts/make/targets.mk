@@ -1,6 +1,12 @@
 # Aggregate targets and phony declarations.
 
 .PHONY: FORCE sw-uart sw-coremark-loop sw-coremark-loop-vm \
+	sw-coremark-loop-4h-vm sim-4h-3p-sv39 \
+	sw-coremark-loop-4h-shared-vm sw-atomic-4h-shared-vm \
+	sw-coremark-loop-4h-bare sim-4h-3p-bare \
+	sim-4h-3p-bare-configured \
+	sim-4h-3p-shared-sv39 sim-4h-3p-atomic-sv39 \
+	sim-4h-3p-shared-suite \
 	sw-zero-sv39 bench-zero-sv39 sim-zero-sv39 sw-atomic \
 	sim-atomic-soc \
 	sw-memcpy sw-memcpy-4k \

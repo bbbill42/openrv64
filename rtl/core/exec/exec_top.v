@@ -19,6 +19,7 @@ module openrv64_exec_top #(
     parameter integer ENABLE_LOCAL_FORWARDING_3P = 1,
     parameter integer ENABLE_POSTED_STORES = 1,
     parameter integer STORE_QUEUE_DEPTH_3P = 4,
+    parameter integer ENABLE_COHERENT_ATOMICS_3P = 0,
     parameter [`RV64_XLEN-1:0] STORE_FORWARD_BASE = {`RV64_XLEN{1'b0}},
     parameter [`RV64_XLEN-1:0] STORE_FORWARD_SIZE = {`RV64_XLEN{1'b0}},
     parameter [`RV64_XLEN-1:0] CACHEABLE_BASE_3P =
@@ -169,6 +170,7 @@ module openrv64_exec_top #(
     input  wire                         flush_3p_i,
     input  wire                         squash_younger_3p_i,
     input  wire [`OPENRV64_INSTR_ID_WIDTH-1:0] squash_id_3p_i,
+    input  wire                         coherent_reservation_clear_3p_i,
     input  wire                         translation_bypass_3p_i,
     input  wire [`OPENRV64_EXEC_PIPE_COUNT-1:0] issue_valid_3p_i,
     output wire [`OPENRV64_EXEC_PIPE_COUNT-1:0] issue_ready_3p_o,
@@ -275,6 +277,8 @@ module openrv64_exec_top #(
                 .ENABLE_LOCAL_FORWARDING(ENABLE_LOCAL_FORWARDING_3P),
                 .ENABLE_POSTED_STORES(ENABLE_POSTED_STORES),
                 .STORE_QUEUE_DEPTH(STORE_QUEUE_DEPTH_3P),
+                .ENABLE_COHERENT_ATOMICS(
+                    ENABLE_COHERENT_ATOMICS_3P),
                 .STORE_FORWARD_BASE(STORE_FORWARD_BASE),
                 .STORE_FORWARD_SIZE(STORE_FORWARD_SIZE),
                 .CACHEABLE_BASE(CACHEABLE_BASE_3P),
@@ -283,6 +287,8 @@ module openrv64_exec_top #(
                 .clk(clk), .rst_n(rst_n), .flush_i(flush_3p_i),
                 .squash_younger_i(squash_younger_3p_i),
                 .squash_id_i(squash_id_3p_i),
+                .coherent_reservation_clear_i(
+                    coherent_reservation_clear_3p_i),
                 .translation_bypass_i(translation_bypass_3p_i),
                 .issue_valid_i(issue_valid_3p_i),
                 .issue_ready_o(issue_ready_3p_o),

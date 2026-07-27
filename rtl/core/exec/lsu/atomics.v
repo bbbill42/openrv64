@@ -14,7 +14,8 @@
 module openrv64_lsu_atomics #(
     parameter integer RETIRE_SLOT_WIDTH = 3,
     parameter integer LSU_TAG_WIDTH = `OPENRV64_LSU_TAG_WIDTH,
-    parameter integer META_WIDTH = `OPENRV64_EXEC_ISSUE_PAYLOAD_WIDTH
+    parameter integer META_WIDTH = `OPENRV64_EXEC_ISSUE_PAYLOAD_WIDTH,
+    parameter integer COHERENT_ATOMICS = 0
 ) (
     input  wire                         clk,
     input  wire                         rst_n,
@@ -119,7 +120,10 @@ module openrv64_lsu_atomics #(
     wire result_fire = result_valid_o && result_ready_i;
     assign done_o = result_fire;
 
-    openrv64_exec_lsu_rv64a u_engine (
+    openrv64_exec_lsu_rv64a #(
+        .SC_STATUS_IN_RDATA(COHERENT_ATOMICS),
+        .COHERENT_RESERVATIONS(COHERENT_ATOMICS)
+    ) u_engine (
         .clk(clk),
         .rst_n(rst_n),
         .flush_i(flush_i && !irrevocable_q),

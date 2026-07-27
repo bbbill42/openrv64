@@ -51,6 +51,92 @@ $(CORE_3P_VM_MEMH): $(CORE_3P_VM_BIN) tools/bin2mem.py
 $(CORE_3P_VM_DISASM): $(CORE_3P_VM_ELF)
 	$(RISCV_OBJDUMP) -d -M no-aliases $< > $@
 
+$(CORE_4H_VM_ELF): $(OPENRV64_MAKEFILES) sw/coremark_4h_vm_start.S \
+		sw/coremark_loop.c sw/openrv64-vm.ld
+	mkdir -p $(dir $@)
+	$(RISCV_CC) $(COREMARK_VM_CFLAGS) -nostdlib \
+		-Wl,--build-id=none,--gc-sections,-Map,$(CORE_4H_VM_MAP) \
+		-T sw/openrv64-vm.ld -o $@ sw/coremark_4h_vm_start.S \
+		sw/coremark_loop.c
+
+$(CORE_4H_VM_TEMPLATE_BIN): $(CORE_4H_VM_ELF)
+	$(RISCV_OBJCOPY) -O binary $< $@
+
+$(CORE_4H_VM_BIN): $(CORE_4H_VM_TEMPLATE_BIN) \
+		tools/make_4h_sv39_image.py
+	$(PYTHON) tools/make_4h_sv39_image.py $< $@
+
+$(CORE_4H_VM_MEMH): $(CORE_4H_VM_BIN) tools/bin2mem.py
+	$(PYTHON) tools/bin2mem.py $< $@ \
+		--size $(CORE_4H_VM_MEMH_BYTES) --word-bytes 64
+
+$(CORE_4H_VM_DISASM): $(CORE_4H_VM_ELF)
+	$(RISCV_OBJDUMP) -d -M no-aliases $< > $@
+
+$(CORE_4H_SHARED_VM_ELF): $(OPENRV64_MAKEFILES) \
+		sw/coremark_4h_shared_vm_start.S sw/coremark_loop.c \
+		sw/openrv64-4h-shared-vm.ld
+	mkdir -p $(dir $@)
+	$(RISCV_CC) $(COREMARK_VM_CFLAGS) -nostdlib \
+		-Wl,--build-id=none,--gc-sections,-Map,$(CORE_4H_SHARED_VM_MAP) \
+		-T sw/openrv64-4h-shared-vm.ld -o $@ \
+		sw/coremark_4h_shared_vm_start.S sw/coremark_loop.c
+
+$(CORE_4H_SHARED_VM_TEMPLATE_BIN): $(CORE_4H_SHARED_VM_ELF)
+	$(RISCV_OBJCOPY) -O binary $< $@
+
+$(CORE_4H_SHARED_VM_BIN): $(CORE_4H_SHARED_VM_TEMPLATE_BIN) \
+		tools/make_shared_sv39_image.py
+	$(PYTHON) tools/make_shared_sv39_image.py $< $@
+
+$(CORE_4H_SHARED_VM_MEMH): $(CORE_4H_SHARED_VM_BIN) tools/bin2mem.py
+	$(PYTHON) tools/bin2mem.py $< $@ \
+		--size $(CORE_4H_SHARED_VM_MEMH_BYTES) --word-bytes 64
+
+$(CORE_4H_SHARED_VM_DISASM): $(CORE_4H_SHARED_VM_ELF)
+	$(RISCV_OBJDUMP) -d -M no-aliases $< > $@
+
+$(CORE_4H_BARE_ELF): $(OPENRV64_MAKEFILES) \
+		sw/coremark_4h_shared_vm_start.S sw/coremark_loop.c \
+		sw/openrv64-4h-bare.ld
+	mkdir -p $(dir $@)
+	$(RISCV_CC) $(COREMARK_VM_CFLAGS) -DOPENRV64_4H_BARE -nostdlib \
+		-Wl,--build-id=none,--gc-sections,-Map,$(CORE_4H_BARE_MAP) \
+		-T sw/openrv64-4h-bare.ld -o $@ \
+		sw/coremark_4h_shared_vm_start.S sw/coremark_loop.c
+
+$(CORE_4H_BARE_BIN): $(CORE_4H_BARE_ELF)
+	$(RISCV_OBJCOPY) -O binary $< $@
+
+$(CORE_4H_BARE_MEMH): $(CORE_4H_BARE_BIN) tools/bin2mem.py
+	$(PYTHON) tools/bin2mem.py $< $@ \
+		--size $(CORE_4H_BARE_MEMH_BYTES) --word-bytes 64
+
+$(CORE_4H_BARE_DISASM): $(CORE_4H_BARE_ELF)
+	$(RISCV_OBJDUMP) -d -M no-aliases $< > $@
+
+$(ATOMIC_4H_SHARED_VM_ELF): $(OPENRV64_MAKEFILES) \
+		sw/atomic_4h_shared_vm.S sw/openrv64-4h-shared-vm.ld
+	mkdir -p $(dir $@)
+	$(RISCV_CC) $(ATOMIC_SOC_ASFLAGS) \
+		-Wl,--build-id=none,--gc-sections,-Map,$(ATOMIC_4H_SHARED_VM_MAP) \
+		-T sw/openrv64-4h-shared-vm.ld -o $@ \
+		sw/atomic_4h_shared_vm.S
+
+$(ATOMIC_4H_SHARED_VM_TEMPLATE_BIN): $(ATOMIC_4H_SHARED_VM_ELF)
+	$(RISCV_OBJCOPY) -O binary $< $@
+
+$(ATOMIC_4H_SHARED_VM_BIN): $(ATOMIC_4H_SHARED_VM_TEMPLATE_BIN) \
+		tools/make_shared_sv39_image.py
+	$(PYTHON) tools/make_shared_sv39_image.py $< $@
+
+$(ATOMIC_4H_SHARED_VM_MEMH): $(ATOMIC_4H_SHARED_VM_BIN) tools/bin2mem.py
+	$(PYTHON) tools/bin2mem.py $< $@ \
+		--size $(ATOMIC_4H_SHARED_VM_MEMH_BYTES) --word-bytes 64
+
+$(ATOMIC_4H_SHARED_VM_DISASM): $(ATOMIC_4H_SHARED_VM_ELF)
+	$(RISCV_OBJDUMP) -d -M no-aliases $< > $@
+
 $(ZERO_VM_ELF): $(OPENRV64_MAKEFILES) sw/zero/zero_sv39.S \
 		sw/zero/openrv64-zero-sv39.ld
 	mkdir -p $(dir $@)

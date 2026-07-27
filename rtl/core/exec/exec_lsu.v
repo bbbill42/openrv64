@@ -18,6 +18,7 @@ module openrv64_exec_lsu #(
     parameter integer LOAD_QUEUE_DEPTH = 4,
     parameter integer STORE_QUEUE_DEPTH = 4,
     parameter integer LSU_TAG_WIDTH = `OPENRV64_LSU_TAG_WIDTH,
+    parameter integer COHERENT_ATOMICS = 0,
     parameter [`RV64_XLEN-1:0] CACHEABLE_BASE = {`RV64_XLEN{1'b0}},
     parameter [`RV64_XLEN-1:0] CACHEABLE_SIZE = {`RV64_XLEN{1'b0}}
 ) (
@@ -26,6 +27,7 @@ module openrv64_exec_lsu #(
     input  wire                         flush_i,
     input  wire                         squash_younger_i,
     input  wire [`OPENRV64_INSTR_ID_WIDTH-1:0] squash_id_i,
+    input  wire                         coherent_reservation_clear_i,
     input  wire                         translation_bypass_i,
 
     input  wire                         load_issue_valid_i,
@@ -366,12 +368,15 @@ module openrv64_exec_lsu #(
     );
 
     wire clear_atomic_reservation =
-        lsq_result_valid && lsq_result_ready && lsq_result_store;
+        (lsq_result_valid && lsq_result_ready && lsq_result_store) ||
+        ((COHERENT_ATOMICS != 0) &&
+         coherent_reservation_clear_i);
 
     openrv64_lsu_atomics #(
         .RETIRE_SLOT_WIDTH(RETIRE_SLOT_WIDTH),
         .LSU_TAG_WIDTH(LSU_TAG_WIDTH),
-        .META_WIDTH(`OPENRV64_EXEC_ISSUE_PAYLOAD_WIDTH)
+        .META_WIDTH(`OPENRV64_EXEC_ISSUE_PAYLOAD_WIDTH),
+        .COHERENT_ATOMICS(COHERENT_ATOMICS)
     ) u_atomics (
         .clk(clk),
         .rst_n(rst_n),

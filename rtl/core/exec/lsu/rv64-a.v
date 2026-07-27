@@ -2,12 +2,22 @@
 `include "core/isa/rv64-i.v"
 `include "core/decode/defs/lsu-defs.v"
 
-// Deliberately small, blocking RV64A implementation for a single hart and a
-// one-request-at-a-time memory system.  AMOs perform a read followed by a
-// write while EX/MEM is stalled.  This is not a multicore coherence point;
-// the reservation must move into the coherent cache/interconnect when harts
-// or independent memory agents are added.
-module openrv64_exec_lsu_rv64a (
+// Deliberately small, blocking RV64A implementation for one hart and a
+// one-request-at-a-time memory path.  AMOs perform a read followed by a write
+// while EX/MEM is stalled.  The compatibility mode owns reservations locally;
+// coherent mode marks LR/SC traffic for a home-owned reservation while still
+// performing AMO arithmetic here.
+module openrv64_exec_lsu_rv64a #(
+    // A coherent L1D returns a failed home SC as bit zero of the marked
+    // write response. Ordinary single-hart paths retain their original
+    // always-successful local RMW behavior.
+    parameter integer SC_STATUS_IN_RDATA = 0,
+    // A coherent LR must establish its reservation at the home.  The coherent
+    // L1D may then satisfy the architectural read from a retained clean line.
+    // The compatibility default retains the original local-LR behavior for
+    // non-coherent single-hart systems.
+    parameter integer COHERENT_RESERVATIONS = 0
+) (
     input  wire                         clk,
     input  wire                         rst_n,
     input  wire                         flush_i,
@@ -175,14 +185,16 @@ module openrv64_exec_lsu_rv64a (
     assign mem_valid_o = valid_i &&
                          ((state_q == STATE_READ) ||
                           (state_q == STATE_WRITE));
-    // Mark both halves of the local AMO read/modify/write sequence and the
-    // successful SC write.  The marker drains and bypasses the local L1D; it
-    // is deliberately not forwarded as a CCX/L2 home lock.  LR remains a
-    // normal cacheable read, while SC must wait for the real write response
-    // rather than being acknowledged as a posted ordinary store.
+    // Mark both halves of the local AMO read/modify/write sequence, every SC,
+    // and an LR when coherent reservations are enabled.  The marker drains
+    // and bypasses local L1D data; it is deliberately not forwarded as a
+    // CCX/L2 lock.  SC waits for the real home response rather than being
+    // acknowledged as a posted ordinary store.
     assign mem_lock_o = mem_valid_o &&
                         (op_is_amo(op_q) ||
-                         (op_q == `RV64_LSU_OP_SC));
+                         (op_q == `RV64_LSU_OP_SC) ||
+                         ((COHERENT_RESERVATIONS != 0) &&
+                          (op_q == `RV64_LSU_OP_LR)));
     assign mem_write_o = valid_i && (state_q == STATE_WRITE);
     assign mem_addr_o = addr_q;
     assign mem_wdata_o = word_access_q ? word_write_data : write_data_q;
@@ -267,7 +279,11 @@ module openrv64_exec_lsu_rv64a (
                             state_q <= STATE_DONE;
                         end else if (op_q == `RV64_LSU_OP_LR) begin
                             result_q <= read_result;
-                            reservation_valid_q <= 1'b1;
+                            // A same-cycle coherence probe orders the LR
+                            // before the conflicting write but must leave no
+                            // surviving local reservation.
+                            reservation_valid_q <=
+                                !clear_reservation_i;
                             reservation_addr_q <= addr_q;
                             reservation_size_q <= size_q;
                             state_q <= STATE_DONE;
@@ -287,11 +303,25 @@ module openrv64_exec_lsu_rv64a (
                             access_fault_q <= 1'b1;
                         end else if (mem_page_fault_i) begin
                             page_fault_q <= 1'b1;
+                        end else if ((SC_STATUS_IN_RDATA != 0) &&
+                                     mem_rdata_i[0] &&
+                                     op_is_amo(op_q)) begin
+                            // A coherence write broke the home reservation.
+                            // Re-read and recompute; the stale write value
+                            // must never be submitted as a fresh SC.
+                            reservation_valid_q <= 1'b0;
+                            state_q <= STATE_READ;
                         end else if (op_q == `RV64_LSU_OP_SC) begin
-                            result_q <= 64'd0;
+                            result_q <=
+                                ((SC_STATUS_IN_RDATA != 0) &&
+                                 mem_rdata_i[0]) ? 64'd1 : 64'd0;
                         end
-                        reservation_valid_q <= 1'b0;
-                        state_q <= STATE_DONE;
+                        if (!((SC_STATUS_IN_RDATA != 0) &&
+                              mem_rdata_i[0] &&
+                              op_is_amo(op_q))) begin
+                            reservation_valid_q <= 1'b0;
+                            state_q <= STATE_DONE;
+                        end
                     end
                 end
 
