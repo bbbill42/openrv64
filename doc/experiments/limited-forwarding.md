@@ -43,13 +43,13 @@ The branch counters are identical in every limited run: 14,153 allocations,
 performance differences below are consequently forwarding results, not a
 branch-prediction change.
 
-| Forwarding mode | Source mask | Cycles | Saved cycles | Runtime reduction | IPC | Share of full-forwarding gain |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Same-pipe baseline | `000` | 103,978 | 0 | 0.00% | 0.5054 | 0.0% |
-| ALU completions only | `011` | 100,501 | 3,477 | 3.34% | 0.5229 | 33.6% |
-| MEM completion only | `100` | 99,359 | 4,619 | 4.44% | 0.5289 | 44.6% |
-| All live completions | `111` | **95,192** | **8,786** | **8.45%** | **0.5520** | **84.9%** |
-| Full completed-result map | separate control | 93,624 | 10,354 | 9.96% | 0.5613 | 100.0% |
+| Forwarding mode           |      Source mask |     Cycles | Saved cycles | Runtime reduction |        IPC | Share of full-forwarding gain |
+|---------------------------|-----------------:|-----------:|-------------:|------------------:|-----------:|------------------------------:|
+| Same-pipe baseline        |            `000` |    103,978 |            0 |             0.00% |     0.5054 |                          0.0% |
+| ALU completions only      |            `011` |    100,501 |        3,477 |             3.34% |     0.5229 |                         33.6% |
+| MEM completion only       |            `100` |     99,359 |        4,619 |             4.44% |     0.5289 |                         44.6% |
+| All live completions      |            `111` | **95,192** |    **8,786** |         **8.45%** | **0.5520** |                     **84.9%** |
+| Full completed-result map | separate control |     93,624 |       10,354 |             9.96% |     0.5613 |                        100.0% |
 
 The full-map row is retained as an upper bound, not as the proposed
 implementation.  Its result map includes completed values held in the
@@ -63,13 +63,13 @@ not retired.  Reconstructing producer lifetime from issue, completion, and
 retirement events gives this completion-age distribution:
 
 | Cycles since producer completion | Completed-RAW blocks | Cumulative share |
-| ---: | ---: | ---: |
-| 0 | 15,701 | 82.69% |
-| 1 | 1,010 | 88.00% |
-| 2 | 273 | 89.44% |
-| 3 | 369 | 91.38% |
-| 4 through 7 | 1,028 | 96.80% |
-| 8 through 10 | 608 | 100.00% |
+|---------------------------------:|---------------------:|-----------------:|
+|                                0 |               15,701 |           82.69% |
+|                                1 |                1,010 |           88.00% |
+|                                2 |                  273 |           89.44% |
+|                                3 |                  369 |           91.38% |
+|                      4 through 7 |                1,028 |           96.80% |
+|                     8 through 10 |                  608 |          100.00% |
 
 Thus 82.7% of this visible completed-RAW condition occurs in the exact cycle
 that the producer's registered completion payload is already present.  A live
@@ -79,16 +79,16 @@ a retirement-queue CAM, or per-register historical data.
 The age-zero producer-to-consumer paths explain the source-mask result:
 
 | Producer to consumer path | Source operand | Blocks |
-| --- | --- | ---: |
-| MEM to EX0 | `rs1` | 4,833 |
-| MEM to EX1 | `rs1` | 2,784 |
-| EX1 to EX0 | `rs1` | 2,201 |
-| EX0 to MEM | `rs2` | 2,144 |
-| MEM to MEM | `rs1` | 1,440 |
-| EX1 to EX0 | `rs2` | 1,312 |
-| EX0 to MEM | `rs1` | 755 |
-| EX1 to MEM | `rs2` | 224 |
-| EX1 to MEM | `rs1` | 8 |
+|---------------------------|----------------|-------:|
+| MEM to EX0                | `rs1`          |  4,833 |
+| MEM to EX1                | `rs1`          |  2,784 |
+| EX1 to EX0                | `rs1`          |  2,201 |
+| EX0 to MEM                | `rs2`          |  2,144 |
+| MEM to MEM                | `rs1`          |  1,440 |
+| EX1 to EX0                | `rs2`          |  1,312 |
+| EX0 to MEM                | `rs1`          |    755 |
+| EX1 to MEM                | `rs2`          |    224 |
+| EX1 to MEM                | `rs1`          |      8 |
 
 MEM supplies 9,057 of the 15,701 age-zero opportunities, versus 6,644 from
 the two ALU ports.  That is why a single MEM result source outperforms two ALU
@@ -98,14 +98,14 @@ These counts are causal block classifications, not additive cycle savings.
 Removing one RAW block changes scheduling and exposes other constraints.  The
 measured counters show that explicitly:
 
-| Oldest-candidate block | Baseline | ALU-only | MEM-only | All-live | Full map |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| RAW, producer pending | 26,409 | 27,809 | 26,409 | 27,801 | 27,801 |
-| RAW, producer completed | 18,989 | 12,329 | 11,620 | 4,232 | 0 |
-| WAW, producer completed | 3,434 | 5,788 | 7,402 | 9,756 | 11,252 |
-| Serialization barrier | 11,311 | 10,594 | 10,160 | 9,399 | 8,663 |
-| Pipe conflict | 4,237 | 3,421 | 4,237 | 3,421 | 3,429 |
-| Pipe busy | 3,631 | 3,847 | 3,640 | 3,856 | 5,536 |
+| Oldest-candidate block  | Baseline | ALU-only | MEM-only | All-live | Full map |
+|-------------------------|---------:|---------:|---------:|---------:|---------:|
+| RAW, producer pending   |   26,409 |   27,809 |   26,409 |   27,801 |   27,801 |
+| RAW, producer completed |   18,989 |   12,329 |   11,620 |    4,232 |        0 |
+| WAW, producer completed |    3,434 |    5,788 |    7,402 |    9,756 |   11,252 |
+| Serialization barrier   |   11,311 |   10,594 |   10,160 |    9,399 |    8,663 |
+| Pipe conflict           |    4,237 |    3,421 |    4,237 |    3,421 |    3,429 |
+| Pipe busy               |    3,631 |    3,847 |    3,640 |    3,856 |    5,536 |
 
 All-live forwarding removes 14,757 of the baseline's completed-RAW block
 classifications, but many become WAW, pending-RAW, or structural stalls.  That
@@ -117,12 +117,12 @@ reduction rather than a proportional reduction.
 `COMPLETION_FORWARD_MASK[2:0]` selects the registered completion payloads from
 EX0, EX1, and MEM respectively:
 
-| Mask | Enabled sources |
-| ---: | --- |
-| `3'b000` | old same-pipe ALU bypass only |
+|     Mask | Enabled sources                 |
+|---------:|---------------------------------|
+| `3'b000` | old same-pipe ALU bypass only   |
 | `3'b011` | EX0 and EX1 completion payloads |
-| `3'b100` | MEM completion payload only |
-| `3'b111` | all three completion payloads |
+| `3'b100` | MEM completion payload only     |
+| `3'b111` | all three completion payloads   |
 
 Each enabled source carries `{valid, rd[4:0], data[63:0]}`.  Dispatch compares
 the selected live tags against the six candidate source operands.  A match

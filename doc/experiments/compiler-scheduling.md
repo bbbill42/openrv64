@@ -12,11 +12,11 @@ and pointer update between a counter load and its dependent increment/store.
 With the normal BTFNT + RAS8 configuration, eight retirement entries, full
 forwarding, relaxed WAW, and posted stores, the canonical `-O2` RV64 run is:
 
-| Configuration | Instructions | Cycles | IPC | Cycle delta |
-| --- | ---: | ---: | ---: | ---: |
-| Original `-O2` source | 52,547 | 91,216 | 0.5761 | reference |
-| `-O2` plus truthful `restrict` | 52,547 | **87,202** | **0.6026** | **-4,014 (-4.40%)** |
-| `-O3` plus truthful `restrict` | 51,923 | **85,925** | **0.6043** | **-5,291 (-5.80%)** |
+| Configuration                  | Instructions |     Cycles |        IPC |         Cycle delta |
+|--------------------------------|-------------:|-----------:|-----------:|--------------------:|
+| Original `-O2` source          |       52,547 |     91,216 |     0.5761 |           reference |
+| `-O2` plus truthful `restrict` |       52,547 | **87,202** | **0.6026** | **-4,014 (-4.40%)** |
+| `-O3` plus truthful `restrict` |       51,923 | **85,925** | **0.6043** | **-5,291 (-5.80%)** |
 
 All three rows use the same work and expected checksum.  The annotated runs
 halt with `a0=0x000000000a277880`.  `-O3` saves a further 1,277 cycles over the
@@ -26,11 +26,11 @@ comparison is not silently changed by an optimizer-level change.
 
 The same binaries were also run on 1P with BTFNT + RAS8 and a full cycle trace:
 
-| 1P configuration | Instructions | Cycles | IPC | Cycle delta |
-| --- | ---: | ---: | ---: | ---: |
-| Original `-O2` source | 52,547 | 132,438 | 0.3968 | reference |
-| `-O2` plus truthful `restrict` | 52,547 | 131,801 | 0.3987 | -637 (-0.48%) |
-| `-O3` plus truthful `restrict` | 51,923 | 130,033 | 0.3993 | -2,405 (-1.82%) |
+| 1P configuration               | Instructions |  Cycles |    IPC |     Cycle delta |
+|--------------------------------|-------------:|--------:|-------:|----------------:|
+| Original `-O2` source          |       52,547 | 132,438 | 0.3968 |       reference |
+| `-O2` plus truthful `restrict` |       52,547 | 131,801 | 0.3987 |   -637 (-0.48%) |
+| `-O3` plus truthful `restrict` |       51,923 | 130,033 | 0.3993 | -2,405 (-1.82%) |
 
 The alias annotation saves only 0.48% on the single pipeline, versus 4.40% on
 3P.  This supports the mechanism: the annotation exposes independent work, but
@@ -82,13 +82,13 @@ operation earlier can put it at the oldest queue position; if it then waits for
 the MEM pipe or a source operand, younger ready ALU work cannot issue around it.
 That failure is visible in the measured variants:
 
-| RV64 compiler variant, original source | Instructions | Cycles | IPC | Versus baseline |
-| --- | ---: | ---: | ---: | ---: |
-| GCC `-O2` default tune | 52,547 | 91,216 | 0.5761 | reference |
-| `-mtune=generic-ooo` | 52,547 | 93,307 | 0.5632 | +2.29% cycles |
-| `-mtune=sifive-7-series` | 52,419 | 96,319 | 0.5442 | +5.59% cycles |
-| selective scheduling passes | 51,891 | 91,261 | 0.5686 | effectively flat |
-| `-O3`, without alias annotation | 51,923 | 90,327 | 0.5748 | -0.97% cycles |
+| RV64 compiler variant, original source | Instructions | Cycles |    IPC |  Versus baseline |
+|----------------------------------------|-------------:|-------:|-------:|-----------------:|
+| GCC `-O2` default tune                 |       52,547 | 91,216 | 0.5761 |        reference |
+| `-mtune=generic-ooo`                   |       52,547 | 93,307 | 0.5632 |    +2.29% cycles |
+| `-mtune=sifive-7-series`               |       52,419 | 96,319 | 0.5442 |    +5.59% cycles |
+| selective scheduling passes            |       51,891 | 91,261 | 0.5686 | effectively flat |
+| `-O3`, without alias annotation        |       51,923 | 90,327 | 0.5748 |    -0.97% cycles |
 
 The scheduling target for the current core is therefore not “start every load
 as early as possible.”  It is “avoid putting an unready operation at the oldest
@@ -102,12 +102,12 @@ basic block has no independent operation to move into the gap.
 Because `sw/coremark_loop.c` is shared, the HPI proxy was rebuilt with the same
 annotation and matching optimization levels.
 
-| Optimization | Core | Instructions | Cycles | IPC | OpenRV64 cycle gap |
-| --- | --- | ---: | ---: | ---: | ---: |
-| `-O2` + `restrict` | OpenRV64 3P | 52,547 | 87,202 | 0.6026 | +15,759 (+22.06%) |
-| `-O2` + `restrict` | gem5 HPI | 58,695 | 71,443 | 0.821564 | reference |
-| `-O3` + `restrict` | OpenRV64 3P | 51,923 | 85,925 | 0.6043 | +18,206 (+26.89%) |
-| `-O3` + `restrict` | gem5 HPI | 58,815 | 67,719 | 0.868515 | reference |
+| Optimization       | Core        | Instructions | Cycles |      IPC | OpenRV64 cycle gap |
+|--------------------|-------------|-------------:|-------:|---------:|-------------------:|
+| `-O2` + `restrict` | OpenRV64 3P |       52,547 | 87,202 |   0.6026 |  +15,759 (+22.06%) |
+| `-O2` + `restrict` | gem5 HPI    |       58,695 | 71,443 | 0.821564 |          reference |
+| `-O3` + `restrict` | OpenRV64 3P |       51,923 | 85,925 |   0.6043 |  +18,206 (+26.89%) |
+| `-O3` + `restrict` | gem5 HPI    |       58,815 | 67,719 | 0.868515 |          reference |
 
 The old HPI `-O2` result was 72,146 cycles.  The annotation improves HPI by
 703 cycles (0.97%), versus 4,014 cycles (4.40%) on OpenRV64.  `-O3` gives HPI a

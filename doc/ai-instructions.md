@@ -156,15 +156,15 @@ prove the model stopped. Check the process and wait for the next output block.
 
 The reset and restore binaries accept:
 
-| Plusarg | Contents |
-|---|---|
+| Plusarg                   | Contents                                                                                                               |
+|---------------------------|------------------------------------------------------------------------------------------------------------------------|
 | `+instruction_trace=PATH` | One record per retired instruction: cycle, PC, instruction, privilege, exception, next PC, and architectural writeback |
-| `+lsu_trace=PATH` | LSU requests/responses and a bounded L1D lock-state diagnostic |
-| `+ccx_trace=PATH` | Native CCX command, write-data, and response handshakes, including IDs, kind, address, burst, beat, and error |
-| `+pipeline_trace=PATH` | Per-cycle deep 3P frontend/window/retirement/LSU/PTW state from the C++ harness |
-| `+stop_cycles=N` | Stop the C++ harness at absolute testbench cycle `N` |
-| `+max_cycles=N` | Set the testbench limit on a reset run |
-| `+max_cycles_override=N` | Replace the restored testbench limit after loading a checkpoint |
+| `+lsu_trace=PATH`         | LSU requests/responses and a bounded L1D lock-state diagnostic                                                         |
+| `+ccx_trace=PATH`         | Native CCX command, write-data, and response handshakes, including IDs, kind, address, burst, beat, and error          |
+| `+pipeline_trace=PATH`    | Per-cycle deep 3P frontend/window/retirement/LSU/PTW state from the C++ harness                                        |
+| `+stop_cycles=N`          | Stop the C++ harness at absolute testbench cycle `N`                                                                   |
+| `+max_cycles=N`           | Set the testbench limit on a reset run                                                                                 |
+| `+max_cycles_override=N`  | Replace the restored testbench limit after loading a checkpoint                                                        |
 
 Do not enable `+pipeline_trace` for an entire 200-million-cycle boot unless the
 storage and slowdown are intentional. Use it for a narrow checkpoint replay.
@@ -292,15 +292,15 @@ Verilator 5.050. Its retained log is:
 build/logs/opensbi-3p-linux-bp6-rw16-sq4-cancel-fix-reset-200m.log
 ```
 
-| Signpost | Cycles | Instructions retired |
-|---|---:|---:|
-| OpenSBI banner | 2,045,476 | 1,795,757 |
-| Linux banner | 5,784,219 | 4,387,743 |
-| PLIC initialized | 43,303,894 | 16,392,143 |
+| Signpost                 |          Cycles |   Instructions retired |
+|--------------------------|----------------:|-----------------------:|
+| OpenSBI banner           |       2,045,476 |              1,795,757 |
+| Linux banner             |       5,784,219 |              4,387,743 |
+| PLIC initialized         |      43,303,894 |             16,392,143 |
 | 8250 console initialized | 131.5M..131.75M | 44,095,668..44,167,115 |
 | Kernel init memory freed | 150.5M..150.75M | 48,997,804..49,058,694 |
-| PID 1 started | 150.75M..151M | 49,058,694..49,130,444 |
-| Real `openrv64# ` prompt | 161,654,395 | 52,323,183 |
+| PID 1 started            |   150.75M..151M | 49,058,694..49,130,444 |
+| Real `openrv64# ` prompt |     161,654,395 |             52,323,183 |
 
 It crossed the former 154,281,360-cycle failure location, printed
 `OPENRV64 BASH INIT`, and later reached the real prompt. The testbench reported

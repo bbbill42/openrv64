@@ -19,35 +19,35 @@ run replaces the cache/DDR3 hierarchy with one-cycle instruction/data SRAM.
 The SoC CoreMark and all STREAM runs use Sv39 and the full
 L1I/L1D -> CCX -> L2 -> AXI -> banked-DDR3 path.
 
-| Area | Setting |
-| --- | --- |
-| Direction/target predictor | `BP_TYPE=8`, BTB256, RAS8 |
-| Fetch mode | alternate lookaside mode 3 |
-| Fetch carousel | enabled (`FETCH_CAROUSEL=1`) |
-| Fetch confidence gate | disabled (`CONFIDENCE_GATE=0`, or `fc0`) |
-| Lookaside pair-stack depth | 2 |
-| Completion forwarding | mask 0 |
-| Branch forwarding | mask 1 |
-| Full forwarding | disabled |
-| WAW relaxation | enabled (`RELAX_WAW=1`) |
-| General hazard relaxation | disabled |
-| Issue window | enabled (`ISSUE_WINDOW=1`) |
-| Speculation | enabled (`SPECULATION_WINDOW=16`) |
-| Issue-window depth | tied to retirement depth: 16 entries |
-| Retirement depth | 16 (`rd16`) |
-| Physical registers | 31 |
-| Posted stores | enabled |
-| L1I / L1D | 16 KiB / 16 KiB |
-| L2 | 256 KiB, 8-way, 8 merge entries |
-| Shared L2 TLB | 256 entries, 4-way |
-| GenBus read/write buffering | 4 / 4 |
-| L1D prefetch | enabled, 2 streams, initial distance 1 |
-| Adaptive prefetch | enabled, maximum distance 4 |
-| Prefetch queue/outstanding/reserve | 4 / 4 / 2 |
-| DDR3 queues | 8 read / 8 write / 16 command |
-| Memory timing model | 0, banked DDR3 enabled |
-| Backing RAM | 16 MiB |
-| Sv39 speculative-load aperture | base `0x40000000`; 128 KiB for CoreMark, 256 KiB for STREAM |
+| Area                               | Setting                                                     |
+|------------------------------------|-------------------------------------------------------------|
+| Direction/target predictor         | `BP_TYPE=8`, BTB256, RAS8                                   |
+| Fetch mode                         | alternate lookaside mode 3                                  |
+| Fetch carousel                     | enabled (`FETCH_CAROUSEL=1`)                                |
+| Fetch confidence gate              | disabled (`CONFIDENCE_GATE=0`, or `fc0`)                    |
+| Lookaside pair-stack depth         | 2                                                           |
+| Completion forwarding              | mask 0                                                      |
+| Branch forwarding                  | mask 1                                                      |
+| Full forwarding                    | disabled                                                    |
+| WAW relaxation                     | enabled (`RELAX_WAW=1`)                                     |
+| General hazard relaxation          | disabled                                                    |
+| Issue window                       | enabled (`ISSUE_WINDOW=1`)                                  |
+| Speculation                        | enabled (`SPECULATION_WINDOW=16`)                           |
+| Issue-window depth                 | tied to retirement depth: 16 entries                        |
+| Retirement depth                   | 16 (`rd16`)                                                 |
+| Physical registers                 | 31                                                          |
+| Posted stores                      | enabled                                                     |
+| L1I / L1D                          | 16 KiB / 16 KiB                                             |
+| L2                                 | 256 KiB, 8-way, 8 merge entries                             |
+| Shared L2 TLB                      | 256 entries, 4-way                                          |
+| GenBus read/write buffering        | 4 / 4                                                       |
+| L1D prefetch                       | enabled, 2 streams, initial distance 1                      |
+| Adaptive prefetch                  | enabled, maximum distance 4                                 |
+| Prefetch queue/outstanding/reserve | 4 / 4 / 2                                                   |
+| DDR3 queues                        | 8 read / 8 write / 16 command                               |
+| Memory timing model                | 0, banked DDR3 enabled                                      |
+| Backing RAM                        | 16 MiB                                                      |
+| Sv39 speculative-load aperture     | base `0x40000000`; 128 KiB for CoreMark, 256 KiB for STREAM |
 
 `ISSUE_WINDOW` and `SPECULATION_WINDOW` are enable controls in the RTL; the
 actual issue-window depth is `RETIRE_DEPTH`. Any nonzero speculation value
@@ -62,10 +62,10 @@ match the Make variable names.
 
 ### CoreMark-derived loop
 
-| Environment | Cycles | Retired | IPC |
-| --- | ---: | ---: | ---: |
-| One-cycle magic SRAM, bare physical addresses | **48,652** | 52,547 | **1.0801** |
-| 3P SoC, Sv39 and banked DDR3 | **56,146** | 52,570 | **0.9363** |
+| Environment                                   |     Cycles | Retired |        IPC |
+|-----------------------------------------------|-----------:|--------:|-----------:|
+| One-cycle magic SRAM, bare physical addresses | **48,652** |  52,547 | **1.0801** |
+| 3P SoC, Sv39 and banked DDR3                  | **56,146** |  52,570 | **0.9363** |
 
 The SoC costs 7,494 cycles, or 15.4% relative to the magic-SRAM run. It also
 retires 23 Sv39 bootstrap instructions, so this is close but not a perfectly
@@ -79,12 +79,12 @@ counter reads. "Stop cycles" and IPC are the harness totals through
 Payload rate counts one read plus one write for copy/scale, and two reads plus
 one write for add/triad.
 
-| Workload | Kernel cycles | Stop cycles | Retired | IPC | Payload | Payload rate |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| STREAM copy | **38,539** | 39,075 | 20,522 | 0.5252 | 128 KiB | 3.4010 B/cycle |
-| STREAM scale | **38,788** | 39,324 | 41,002 | 1.0427 | 128 KiB | 3.3792 B/cycle |
-| STREAM add | **92,142** | 92,679 | 43,052 | 0.4645 | 192 KiB | 2.1338 B/cycle |
-| STREAM triad | **92,333** | 92,870 | 59,436 | 0.6400 | 192 KiB | 2.1293 B/cycle |
+| Workload     | Kernel cycles | Stop cycles | Retired |    IPC | Payload |   Payload rate |
+|--------------|--------------:|------------:|--------:|-------:|--------:|---------------:|
+| STREAM copy  |    **38,539** |      39,075 |  20,522 | 0.5252 | 128 KiB | 3.4010 B/cycle |
+| STREAM scale |    **38,788** |      39,324 |  41,002 | 1.0427 | 128 KiB | 3.3792 B/cycle |
+| STREAM add   |    **92,142** |      92,679 |  43,052 | 0.4645 | 192 KiB | 2.1338 B/cycle |
+| STREAM triad |    **92,333** |      92,870 |  59,436 | 0.6400 | 192 KiB | 2.1293 B/cycle |
 
 At 1 GHz, B/cycle has the same numeric value as GB/s. This is only a scaling
 identity; these simulations do not establish a 1 GHz implementation.
@@ -94,13 +94,13 @@ identity; these simulations do not establish a 1 GHz implementation.
 RD16 is materially better than RD8 for CoreMark and scale. It does not repair
 the two-input STREAM kernels.
 
-| Workload | RD8 cycles | RD16 cycles | RD16 delta |
-| --- | ---: | ---: | ---: |
-| CoreMark, Sv39 SoC | 65,670 | 56,146 | -9,524 (-14.5%) |
-| STREAM copy | 38,792 | 38,539 | -253 (-0.7%) |
-| STREAM scale | 44,904 | 38,788 | -6,116 (-13.6%) |
-| STREAM add | 92,664 | 92,142 | -522 (-0.6%) |
-| STREAM triad | 92,236 | 92,333 | +97 (+0.1%) |
+| Workload           | RD8 cycles | RD16 cycles |      RD16 delta |
+|--------------------|-----------:|------------:|----------------:|
+| CoreMark, Sv39 SoC |     65,670 |      56,146 | -9,524 (-14.5%) |
+| STREAM copy        |     38,792 |      38,539 |    -253 (-0.7%) |
+| STREAM scale       |     44,904 |      38,788 | -6,116 (-13.6%) |
+| STREAM add         |     92,664 |      92,142 |    -522 (-0.6%) |
+| STREAM triad       |     92,236 |      92,333 |     +97 (+0.1%) |
 
 This is why RD16 is now the project default. When the issue window is enabled,
 changing retirement depth also changes issue-window capacity.
@@ -113,14 +113,14 @@ speculation value 16, posted stores, two adaptive prefetch streams, Sv39, and
 banked DDR3. RD32 improves CoreMark modestly but does not improve STREAM as a
 class.
 
-| Workload | RD16 cycles | RD32 cycles | RD32 delta | RD32 IPC/rate |
-| --- | ---: | ---: | ---: | ---: |
-| CoreMark, magic SRAM | 48,652 | **47,588** | -1,064 (-2.2%) | 1.1042 IPC |
-| CoreMark, Sv39 SoC | 56,146 | **55,398** | -748 (-1.3%) | 0.9490 IPC |
-| STREAM copy, kernel | 38,539 | **38,533** | -6 (-0.02%) | 3.4016 B/cycle |
-| STREAM scale, kernel | 38,788 | **38,782** | -6 (-0.02%) | 3.3797 B/cycle |
-| STREAM add, kernel | 92,142 | **92,279** | +137 (+0.15%) | 2.1306 B/cycle |
-| STREAM triad, kernel | 92,333 | **92,256** | -77 (-0.08%) | 2.1311 B/cycle |
+| Workload             | RD16 cycles | RD32 cycles |     RD32 delta |  RD32 IPC/rate |
+|----------------------|------------:|------------:|---------------:|---------------:|
+| CoreMark, magic SRAM |      48,652 |  **47,588** | -1,064 (-2.2%) |     1.1042 IPC |
+| CoreMark, Sv39 SoC   |      56,146 |  **55,398** |   -748 (-1.3%) |     0.9490 IPC |
+| STREAM copy, kernel  |      38,539 |  **38,533** |    -6 (-0.02%) | 3.4016 B/cycle |
+| STREAM scale, kernel |      38,788 |  **38,782** |    -6 (-0.02%) | 3.3797 B/cycle |
+| STREAM add, kernel   |      92,142 |  **92,279** |  +137 (+0.15%) | 2.1306 B/cycle |
+| STREAM triad, kernel |      92,333 |  **92,256** |   -77 (-0.08%) | 2.1311 B/cycle |
 
 RD32 STREAM stop cycles were 39,053, 39,302, 92,800, and 92,777 for
 copy, scale, add, and triad respectively. Separate full-result runs of all
@@ -152,17 +152,17 @@ The two-stream prefetch implementation is present and active. Add and triad
 issue about twice as many prefetches as copy, which is the expected signature
 for tracking both input arrays:
 
-| Counter | Copy | Add | Triad |
-| --- | ---: | ---: | ---: |
-| Kernel cycles | 38,539 | 92,142 | 92,333 |
-| L1D line reads | 1,028 | 2,061 | 2,060 |
-| L1D line writes | 1,024 | 1,024 | 1,024 |
-| DDR commands | 2,065 | 3,094 | 3,094 |
-| Prefetch issued | 1,027 | 2,059 | 2,058 |
-| Prefetch late | 311 | 1,431 | 1,329 |
-| Prefetch dropped | 0 | 585 | 586 |
-| Retirement head incomplete | 24,007 | 67,621 | 61,601 |
-| Load at retirement head | 13,238 | 56,539 | 50,504 |
+| Counter                         |   Copy |    Add |  Triad |
+|---------------------------------|-------:|-------:|-------:|
+| Kernel cycles                   | 38,539 | 92,142 | 92,333 |
+| L1D line reads                  |  1,028 |  2,061 |  2,060 |
+| L1D line writes                 |  1,024 |  1,024 |  1,024 |
+| DDR commands                    |  2,065 |  3,094 |  3,094 |
+| Prefetch issued                 |  1,027 |  2,059 |  2,058 |
+| Prefetch late                   |    311 |  1,431 |  1,329 |
+| Prefetch dropped                |      0 |    585 |    586 |
+| Retirement head incomplete      | 24,007 | 67,621 | 61,601 |
+| Load at retirement head         | 13,238 | 56,539 | 50,504 |
 | Memory access in flight at head | 22,416 | 64,712 | 58,502 |
 
 Detection is therefore fixed; throughput is not. Add and triad still sustain
@@ -184,14 +184,14 @@ queue-capacity failure from true single-port bandwidth failure.
 The RD16 SoC run reaches 0.9363 IPC, but remains 7,494 cycles behind the
 one-cycle-SRAM result. Its major non-exclusive counters are:
 
-| Counter | Cycles | Fraction of SoC run |
-| --- | ---: | ---: |
-| Frontend empty | 25,855 | 46.1% |
-| Fetch refill wait | 24,048 | 42.8% |
-| Retirement queue nonempty, no retirement | 21,883 | 39.0% |
-| Dispatch nonempty, no issue | 20,546 | 36.6% |
-| Window RAW-stall cycles | 10,982 | 19.6% |
-| Completed instructions behind retirement head | 11,208 | 20.0% |
+| Counter                                       | Cycles | Fraction of SoC run |
+|-----------------------------------------------|-------:|--------------------:|
+| Frontend empty                                | 25,855 |               46.1% |
+| Fetch refill wait                             | 24,048 |               42.8% |
+| Retirement queue nonempty, no retirement      | 21,883 |               39.0% |
+| Dispatch nonempty, no issue                   | 20,546 |               36.6% |
+| Window RAW-stall cycles                       | 10,982 |               19.6% |
+| Completed instructions behind retirement head | 11,208 |               20.0% |
 
 The memory hierarchy itself reports only 68 cycles of explicit DDR read-timing
 blockage. Likewise, only 827 frontend-empty cycles coincide with an external

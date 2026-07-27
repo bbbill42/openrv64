@@ -18,11 +18,11 @@ one saved entry and reported no overflow in these runs. The measured effect
 from increasing this parameter therefore came from additional lookaside
 residency, not deeper request queuing.
 
-| Lookaside contexts | Window/retire 16 | Window/retire 32 | Window/retire 64 |
-| ---: | ---: | ---: | ---: |
-| 2 | 70,877 cycles, 0.7414 IPC | 71,437 cycles, 0.7356 IPC | 71,398 cycles, 0.7360 IPC |
-| 4 | **70,629 cycles, 0.7440 IPC** | 70,844 cycles, 0.7417 IPC | 70,818 cycles, 0.7420 IPC |
-| 8 | **70,629 cycles, 0.7440 IPC** | 70,874 cycles, 0.7414 IPC | 70,848 cycles, 0.7417 IPC |
+| Lookaside contexts |              Window/retire 16 |          Window/retire 32 |          Window/retire 64 |
+|-------------------:|------------------------------:|--------------------------:|--------------------------:|
+|                  2 |     70,877 cycles, 0.7414 IPC | 71,437 cycles, 0.7356 IPC | 71,398 cycles, 0.7360 IPC |
+|                  4 | **70,629 cycles, 0.7440 IPC** | 70,844 cycles, 0.7417 IPC | 70,818 cycles, 0.7420 IPC |
+|                  8 | **70,629 cycles, 0.7440 IPC** | 70,874 cycles, 0.7414 IPC | 70,848 cycles, 0.7417 IPC |
 
 Increasing the lookaside from two to four contexts removed 248 cycles at
 window 16, 593 cycles at window 32, and 580 cycles at window 64. It recovered
@@ -30,13 +30,13 @@ most of the additional-window regression, but the controlled four-context
 comparison still favored the 16-entry window by 215 cycles over 32 entries
 and by 189 cycles over 64 entries.
 
-| Counter | Contexts | Window 16 | Window 32 | Window 64 |
-| --- | ---: | ---: | ---: | ---: |
-| Lookaside restart hits | 2 | 1,042 | 879 | 884 |
-| Lookaside restart hits | 4 | 1,220 | 1,202 | 1,208 |
-| Lookaside restart hits | 8 | 1,220 | 1,233 | 1,239 |
-| Exposed next-line stash stalls | 4 | 131 | 69 | 69 |
-| Exposed next-line stash stalls | 8 | 131 | 181 | 181 |
+| Counter                        | Contexts | Window 16 | Window 32 | Window 64 |
+|--------------------------------|---------:|----------:|----------:|----------:|
+| Lookaside restart hits         |        2 |     1,042 |       879 |       884 |
+| Lookaside restart hits         |        4 |     1,220 |     1,202 |     1,208 |
+| Lookaside restart hits         |        8 |     1,220 |     1,233 |     1,239 |
+| Exposed next-line stash stalls |        4 |       131 |        69 |        69 |
+| Exposed next-line stash stalls |        8 |       131 |       181 |       181 |
 
 Eight contexts added restart hits for the 32- and 64-entry configurations,
 but those runs gained 112 exposed next-line stash-stall cycles and finished

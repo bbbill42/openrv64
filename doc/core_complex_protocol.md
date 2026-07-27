@@ -42,18 +42,18 @@ same-line merge requests from other harts during a fill.
 
 The currently implemented scalar compatibility CCX request carries:
 
-| Field | Width | Meaning |
-| --- | ---: | --- |
-| `hart_id` | 4 | Source hart, supporting IDs 0 through 15. |
-| `txn_id` | 4 | Requester-local transaction identity. |
-| `op` | 4 | Read, write, LR, SC, AMO operation, or fence. |
-| `order` | 2 | None, acquire, release, or acquire-release. |
-| `kind` | 2 | Legacy, fetch, data, or PTW request. |
-| `attr` | 4 | Cacheable, device, idempotent, and executable attributes. |
-| `size` | 3 | Base-two logarithm of the transfer size in bytes. |
-| `addr` | 64 | Physical byte address. |
-| `wdata` | 64 | Scalar write data. |
-| `wstrb` | 8 | Scalar byte write enables. |
+| Field     | Width | Meaning                                                   |
+|-----------|------:|-----------------------------------------------------------|
+| `hart_id` |     4 | Source hart, supporting IDs 0 through 15.                 |
+| `txn_id`  |     4 | Requester-local transaction identity.                     |
+| `op`      |     4 | Read, write, LR, SC, AMO operation, or fence.             |
+| `order`   |     2 | None, acquire, release, or acquire-release.               |
+| `kind`    |     2 | Legacy, fetch, data, or PTW request.                      |
+| `attr`    |     4 | Cacheable, device, idempotent, and executable attributes. |
+| `size`    |     3 | Base-two logarithm of the transfer size in bytes.         |
+| `addr`    |    64 | Physical byte address.                                    |
+| `wdata`   |    64 | Scalar write data.                                        |
+| `wstrb`   |     8 | Scalar byte write enables.                                |
 
 The response returns `hart_id`, `txn_id`, 64-bit read data, error, and SC
 success. A hart endpoint accepts only a response matching both identities.
@@ -74,12 +74,12 @@ rather than as eight scalar requests.
 In addition to the identity, operation, ordering, requester-kind, attributes,
 and physical address above, a native request carries:
 
-| Field | Width | Meaning |
-| --- | ---: | --- |
-| `source_id` | implementation-defined | I-cache, D-cache, PTW, or another endpoint within the hart. |
-| `burst_len` | 8 | Additional consecutive cache lines; zero means one line and 255 means 256 lines. |
-| `wdata` | 512 | One cache-line write-data beat. |
-| `wstrb` | 64 | One byte enable per cache-line byte. |
+| Field       |                  Width | Meaning                                                                          |
+|-------------|-----------------------:|----------------------------------------------------------------------------------|
+| `source_id` | implementation-defined | I-cache, D-cache, PTW, or another endpoint within the hart.                      |
+| `burst_len` |                      8 | Additional consecutive cache lines; zero means one line and 255 means 256 lines. |
+| `wdata`     |                    512 | One cache-line write-data beat.                                                  |
+| `wstrb`     |                     64 | One byte enable per cache-line byte.                                             |
 
 A request for `burst_len=N` covers `N+1` lines beginning at the aligned start
 address. Each line remains a separate 512-bit data beat and a separate

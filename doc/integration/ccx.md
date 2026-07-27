@@ -100,20 +100,20 @@ Other current restrictions are:
 A native hart endpoint must preserve the following fields through translation,
 PMP checking, and private-cache lookup:
 
-| Field | Meaning |
-| --- | --- |
-| `valid/ready` | Decoupled request acceptance.  Payload remains stable until accepted. |
-| `hart_id` | Physical source hart, matching the hart's `mhartid`. |
-| `source_id` | At least instruction cache, data cache, or PTW. |
-| `txn_id` | Requester transaction identity, not reused until its response is drained. |
-| `op` | Read, write, LR, SC, AMO function, or fence. |
-| `lock` | Reserved compatibility field. The native one-hart core path drives zero; it is not an atomic contract. |
-| `order` | None, acquire, release, or acquire-release. |
-| `attr` | Per-request cacheable, device, idempotent, and executable attributes. |
-| `size` | Sub-line access size for atomics and uncached operations; cache-line transfers imply 64 bytes. |
-| `addr` | Physical start address.  Cache-line operations are 64-byte aligned. |
-| `burst_len` | Number of additional consecutive cache lines; zero requests one line. |
-| `wdata/wstrb` | One 512-bit cache-line beat and 64 byte enables. |
+| Field         | Meaning                                                                                                |
+|---------------|--------------------------------------------------------------------------------------------------------|
+| `valid/ready` | Decoupled request acceptance.  Payload remains stable until accepted.                                  |
+| `hart_id`     | Physical source hart, matching the hart's `mhartid`.                                                   |
+| `source_id`   | At least instruction cache, data cache, or PTW.                                                        |
+| `txn_id`      | Requester transaction identity, not reused until its response is drained.                              |
+| `op`          | Read, write, LR, SC, AMO function, or fence.                                                           |
+| `lock`        | Reserved compatibility field. The native one-hart core path drives zero; it is not an atomic contract. |
+| `order`       | None, acquire, release, or acquire-release.                                                            |
+| `attr`        | Per-request cacheable, device, idempotent, and executable attributes.                                  |
+| `size`        | Sub-line access size for atomics and uncached operations; cache-line transfers imply 64 bytes.         |
+| `addr`        | Physical start address.  Cache-line operations are 64-byte aligned.                                    |
+| `burst_len`   | Number of additional consecutive cache lines; zero requests one line.                                  |
+| `wdata/wstrb` | One 512-bit cache-line beat and 64 byte enables.                                                       |
 
 The response must return `hart_id`, `source_id` or an equivalent uniquely
 routed identity, `txn_id`, one 512-bit cache-line data beat, `beat_index`,

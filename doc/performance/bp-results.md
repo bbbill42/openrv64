@@ -8,11 +8,11 @@ Matched current-tree CoreMark runs validate the two larger predictors. All
 three rows retire 52,547 instructions, halt with
 `a0=0x000000000a277880`, and report no predictor-record overflow.
 
-| Mode | Direction predictor | Cycles | IPC | Corrections | Cycle delta from mode 6 |
-| ---: | --- | ---: | ---: | ---: | ---: |
-| 6 | 256x3 gshare, 8-bit history | 70,030 | 0.7503 | 1,658 | reference |
-| 7 | 512x3 gshare, 9-bit history | 68,194 | 0.7706 | 1,348 | -1,836 (-2.62%) |
-| 8 | 2048x3 global + 512x10 local history + 1024x3 local PHT + 512x2 chooser | **65,577** | **0.8013** | **732** | **-4,453 (-6.36%)** |
+| Mode | Direction predictor                                                     |     Cycles |        IPC | Corrections | Cycle delta from mode 6 |
+|-----:|-------------------------------------------------------------------------|-----------:|-----------:|------------:|------------------------:|
+|    6 | 256x3 gshare, 8-bit history                                             |     70,030 |     0.7503 |       1,658 |               reference |
+|    7 | 512x3 gshare, 9-bit history                                             |     68,194 |     0.7706 |       1,348 |         -1,836 (-2.62%) |
+|    8 | 2048x3 global + 512x10 local history + 1024x3 local PHT + 512x2 chooser | **65,577** | **0.8013** |     **732** |     **-4,453 (-6.36%)** |
 
 Mode 7 removes 310 corrections (18.7%) relative to mode 6. Mode 8 removes
 926 (55.9%). Relative to mode 7, mode 8 saves another 2,617 cycles (3.84%)
@@ -97,17 +97,17 @@ cycle-level pipeline trace. "Full fwd" is the separate completed-result
 forwarding experiment; the normal branch-only EX0/EX1/MEM bypass remains on in
 all 3P rows.
 
-| Machine | Predictor | Full fwd | Retired | Cycles | IPC | Backend corrections | Delta from matching 32x3 |
-| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| OpenRV64 1P | 32x3 bimodal + RAS8 | n/a | 52,547 | 131,894 | 0.3984 | not counted | reference |
-| OpenRV64 1P | **256x3 gshare + BTB256 + RAS8** | n/a | 52,547 | **131,251** | **0.4004** | not counted | **-643 (-0.49%)** |
-| OpenRV64 3P | 32x3 bimodal + RAS8 | off | 52,547 | 90,151 | 0.5829 | 2,878 | reference |
-| OpenRV64 3P | **256x3 gshare + BTB256 + RAS8** | off | 52,547 | **86,267** | **0.6091** | **1,658** | **-3,884 (-4.31%)** |
-| OpenRV64 3P | direction-and-target oracle | off | 52,547 | 78,752 | 0.6672 | 0 | -11,399 (-12.64%) |
-| OpenRV64 3P | 32x3 bimodal + RAS8 | on | 52,547 | 84,458 | 0.6222 | 2,878 | reference |
-| OpenRV64 3P | **256x3 gshare + BTB256 + RAS8** | on | 52,547 | **80,449** | **0.6532** | **1,658** | **-4,009 (-4.75%)** |
-| OpenRV64 3P | direction-and-target oracle | on | 52,547 | 73,934 | 0.7107 | 0 | -10,524 (-12.46%) |
-| ARM gem5 HPI A53-class proxy | model predictor | n/a | 58,695 | 72,146 | 0.8136 | n/a | cross-ISA reference |
+| Machine                      | Predictor                        | Full fwd | Retired |      Cycles |        IPC | Backend corrections | Delta from matching 32x3 |
+|------------------------------|----------------------------------|---------:|--------:|------------:|-----------:|--------------------:|-------------------------:|
+| OpenRV64 1P                  | 32x3 bimodal + RAS8              |      n/a |  52,547 |     131,894 |     0.3984 |         not counted |                reference |
+| OpenRV64 1P                  | **256x3 gshare + BTB256 + RAS8** |      n/a |  52,547 | **131,251** | **0.4004** |         not counted |        **-643 (-0.49%)** |
+| OpenRV64 3P                  | 32x3 bimodal + RAS8              |      off |  52,547 |      90,151 |     0.5829 |               2,878 |                reference |
+| OpenRV64 3P                  | **256x3 gshare + BTB256 + RAS8** |      off |  52,547 |  **86,267** | **0.6091** |           **1,658** |      **-3,884 (-4.31%)** |
+| OpenRV64 3P                  | direction-and-target oracle      |      off |  52,547 |      78,752 |     0.6672 |                   0 |        -11,399 (-12.64%) |
+| OpenRV64 3P                  | 32x3 bimodal + RAS8              |       on |  52,547 |      84,458 |     0.6222 |               2,878 |                reference |
+| OpenRV64 3P                  | **256x3 gshare + BTB256 + RAS8** |       on |  52,547 |  **80,449** | **0.6532** |           **1,658** |      **-4,009 (-4.75%)** |
+| OpenRV64 3P                  | direction-and-target oracle      |       on |  52,547 |      73,934 |     0.7107 |                   0 |        -10,524 (-12.46%) |
+| ARM gem5 HPI A53-class proxy | model predictor                  |      n/a |  58,695 |      72,146 |     0.8136 |                 n/a |      cross-ISA reference |
 
 The HPI row is not Cortex-A53 silicon and its raw IPC is not directly
 comparable: the AArch64 stream executes 11.7% more instructions. At equal
@@ -179,19 +179,19 @@ complexity starts outrunning this core.
 The controlled 3P pair changes only `BP_TYPE` and its associated table
 parameters.
 
-| Counter | 32x3 bimodal | 256x3 gshare + BTB | Delta |
-| --- | ---: | ---: | ---: |
-| Cycles | 90,151 | **86,267** | **-3,884** |
-| IPC | 0.5829 | **0.6091** | **+0.0262** |
-| Correct-path control resolutions | 12,691 | 12,691 | 0 |
-| Backend corrections | 2,878 | **1,658** | **-1,220 (-42.4%)** |
-| All control redirects | 3,022 | **1,658** | **-1,364 (-45.1%)** |
-| Predictor-stall observation cycles | 5,224 | **36** | **-5,188** |
-| Zero-issue cycles | 55,529 | **51,606** | **-3,923** |
-| Frontend held | 23,517 | **21,487** | **-2,030** |
-| RAW-pending first block | 38,695 | **38,416** | -279 |
-| Retirement head incomplete | 41,132 | **40,965** | -167 |
-| Fetch AXI reads | 25,433 | 26,049 | +616 |
+| Counter                            | 32x3 bimodal | 256x3 gshare + BTB |               Delta |
+|------------------------------------|-------------:|-------------------:|--------------------:|
+| Cycles                             |       90,151 |         **86,267** |          **-3,884** |
+| IPC                                |       0.5829 |         **0.6091** |         **+0.0262** |
+| Correct-path control resolutions   |       12,691 |             12,691 |                   0 |
+| Backend corrections                |        2,878 |          **1,658** | **-1,220 (-42.4%)** |
+| All control redirects              |        3,022 |          **1,658** | **-1,364 (-45.1%)** |
+| Predictor-stall observation cycles |        5,224 |             **36** |          **-5,188** |
+| Zero-issue cycles                  |       55,529 |         **51,606** |          **-3,923** |
+| Frontend held                      |       23,517 |         **21,487** |          **-2,030** |
+| RAW-pending first block            |       38,695 |         **38,416** |                -279 |
+| Retirement head incomplete         |       41,132 |         **40,965** |                -167 |
+| Fetch AXI reads                    |       25,433 |             26,049 |                +616 |
 
 The important distinction is between predictor events and wall-clock gain.
 Removing 1,364 redirects and 5,188 predictor-stall observations saves 3,884

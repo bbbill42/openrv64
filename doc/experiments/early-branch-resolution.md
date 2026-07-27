@@ -29,10 +29,10 @@ All runs used `sw/coremark-loop.elf`, the 256-bit AXI/16 MiB RAM testbench, and
 full pipeline tracing. Each completed with the expected
 `a0=0x000000000a277880` and normal `ebreak` halt.
 
-| Configuration | Before | Early branch | Cycles removed | IPC before | IPC after |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| Current 3P, repeat-last predictor, forwarding off | 122,223 | **114,007** | **8,216 (6.72%)** | 0.4299 | **0.4609** |
-| Oracle control flow plus full forwarding | 96,326 | **84,308** | **12,018 (12.48%)** | 0.5455 | **0.6233** |
+| Configuration                                     |  Before | Early branch |      Cycles removed | IPC before |  IPC after |
+|---------------------------------------------------|--------:|-------------:|--------------------:|-----------:|-----------:|
+| Current 3P, repeat-last predictor, forwarding off | 122,223 |  **114,007** |   **8,216 (6.72%)** |     0.4299 | **0.4609** |
+| Oracle control flow plus full forwarding          |  96,326 |   **84,308** | **12,018 (12.48%)** |     0.5455 | **0.6233** |
 
 The combined diagnostic run is now 12,162 cycles above the 72,146-cycle HPI
 reference, or 1.169 times HPI runtime. The 0.9-IPC target is 58,386 cycles, so
@@ -42,18 +42,18 @@ reference, or 1.169 times HPI runtime. The 0.9-IPC target is 58,386 cycles, so
 
 These counters overlap and must not be added.
 
-| Counter | Oracle + forwarding before | Plus early branch | Delta |
-| --- | ---: | ---: | ---: |
-| Total cycles | 96,326 | 84,308 | -12,018 |
-| Frontend empty | 29,149 | 30,702 | +1,553 |
-| Frontend held | 31,024 | 21,293 | -9,731 |
-| Dispatch empty | 1,545 | 4,860 | +3,315 |
-| Dispatch nonempty, no issue | 53,157 | 40,640 | -12,517 |
-| Queued RAW indication | 58,300 | 53,525 | -4,775 |
-| Queued WAW indication | 45,162 | 42,244 | -2,918 |
-| Retire wait | 51,937 | 42,473 | -9,464 |
-| Two-wide issue cycles | 10,459 | 13,387 | +2,928 |
-| Three-wide issue cycles | 233 | 177 | -56 |
+| Counter                     | Oracle + forwarding before | Plus early branch |   Delta |
+|-----------------------------|---------------------------:|------------------:|--------:|
+| Total cycles                |                     96,326 |            84,308 | -12,018 |
+| Frontend empty              |                     29,149 |            30,702 |  +1,553 |
+| Frontend held               |                     31,024 |            21,293 |  -9,731 |
+| Dispatch empty              |                      1,545 |             4,860 |  +3,315 |
+| Dispatch nonempty, no issue |                     53,157 |            40,640 | -12,517 |
+| Queued RAW indication       |                     58,300 |            53,525 |  -4,775 |
+| Queued WAW indication       |                     45,162 |            42,244 |  -2,918 |
+| Retire wait                 |                     51,937 |            42,473 |  -9,464 |
+| Two-wide issue cycles       |                     10,459 |            13,387 |  +2,928 |
+| Three-wide issue cycles     |                        233 |               177 |     -56 |
 
 The change removes backend serialization and exposes more genuine frontend
 emptiness. It also substantially increases two-wide issue. Remaining RAW,
